@@ -1,6 +1,7 @@
 """
 OpenClaw/Hermes Audit Automation Pipeline
 ==========================================
+Authors: Aditya Tyagi; Gulshan Mehta
 Reads Excel feedback data, compares AI vs Verifier verdicts,
 identifies root causes of discrepancies, and auto-refines the prompt.
 
@@ -22,13 +23,16 @@ from pathlib import Path
 VERTEX_GENERATE_URL = "https://voicelensG1.pragyaa.ai/vertex/generate"
 VERTEX_TRANSCRIPT_URL = "https://voicelensG1.pragyaa.ai/vertex/transcript"
 
-# Vertex AI Integration (Legacy/Optional - We now prefer the direct API)
+# Vertex AI SDK (Legacy/Optional - We now prefer the direct API for speed)
 try:
     import vertexai
     from vertexai.generative_models import GenerativeModel, Part, GenerationConfig
-    VERTEX_AVAILABLE = True
+    SDK_AVAILABLE = True
 except ImportError:
-    VERTEX_AVAILABLE = False
+    SDK_AVAILABLE = False
+
+# The Internal API uses 'requests' and doesn't need the SDK
+INTERNAL_API_AVAILABLE = True 
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
@@ -356,7 +360,10 @@ OUTPUT ONLY THE PROMPT.
         try:
             response = requests.post(
                 VERTEX_GENERATE_URL,
-                json={"prompt": meta_prompt},
+                json={
+                    "prompt": meta_prompt,
+                    "model": "gemini-2.5-flash-lite"
+                },
                 timeout=60
             )
             
@@ -568,14 +575,14 @@ def run_pipeline(excel_path: str, prompt_dir: str = None):
     
     # Step 6: Evolve Prompt (Vertex AI)
     new_prompt_file = None
-    if VERTEX_AVAILABLE:
+    if INTERNAL_API_AVAILABLE:
         # User requested limit on retries per optimisation
         max_retries = int(os.getenv("MAX_EVOLVE_RETRIES", 3))
         new_prompt = evolve_prompt_vertex(analysis, deltas, prompt, prompt_dir, max_retries=max_retries)
         if new_prompt:
             new_prompt_file = save_new_prompt(new_prompt, prompt_dir)
     else:
-        print("[6/6] Skipping evolution (Vertex AI SDK not found or environment not configured)")
+        print("[6/6] Skipping evolution (Internal API not configured)")
 
     # Save analysis JSON for Hermes skill consumption
     json_path = os.path.join(prompt_dir, 'evolution_history.json')

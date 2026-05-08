@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 import io
 import base64
+import requests
 
 # Import logic from the root script
 # Since Vercel puts the api/ folder in a specific environment, we might need to adjust imports
@@ -17,11 +18,13 @@ try:
         analyze_root_causes, 
         generate_prompt_deltas, 
         compare_prompt_with_data,
-        VERTEX_AVAILABLE
+        INTERNAL_API_AVAILABLE,
+        SDK_AVAILABLE
     )
 except ImportError:
     # Fallback if import fails in Vercel env
-    VERTEX_AVAILABLE = False
+    INTERNAL_API_AVAILABLE = True
+    SDK_AVAILABLE = False
 
 app = Flask(__name__)
 
@@ -68,11 +71,31 @@ def analyze():
             "analysis": analysis,
             "deltas": deltas,
             "coverage": coverage,
-            "vertex_available": VERTEX_AVAILABLE,
+            "vertex_available": INTERNAL_API_AVAILABLE,
             "vertex_status": vertex_status,
             "optimized_prompt": optimized_prompt
         })
         
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/vertex', methods=['POST'])
+def vertex_proxy():
+    try:
+        data = request.json
+        from openclaw_audit_automation import VERTEX_GENERATE_URL, VERTEX_TRANSCRIPT_URL
+        
+        # Determine target URL based on request type
+        is_transcript = 'audio' in data
+        url = VERTEX_TRANSCRIPT_URL if is_transcript else VERTEX_GENERATE_URL
+        
+        # Forward request to Vertex API
+        response = requests.post(url, json=data, timeout=60)
+        
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({"error": f"Vertex API Error ({response.status_code})", "details": response.text}), response.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

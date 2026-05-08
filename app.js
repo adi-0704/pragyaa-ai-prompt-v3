@@ -211,18 +211,30 @@ async function runLocalAnalysis() {
 }
 
 async function generatePromptViaBackend(analysis, deltas, currentPrompt) {
-  // Use the backend to get the prompt if frontend AI fails
+  // Use the backend to get the prompt if frontend direct AI call fails
+  // Since we already have the analysis, we can send it to a (theoretical) evolution endpoint
+  // Or just call /api/analyze again with the file if we have it in state
+  if (!state.file) throw new Error('No file available for backend fallback');
+  
+  const reader = new FileReader();
+  const fileBase64 = await new Promise((resolve) => {
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.readAsDataURL(state.file);
+  });
+
   const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      file_content: '', // No file needed if we just want a prompt rethink? 
-      // Actually /api/analyze expects file_content. 
-      // This is a fallback so we should probably implement a dedicated prompt endpoint.
-      // For now, let's just use the template.
+      file_content: fileBase64,
+      current_prompt: currentPrompt,
+      generate_prompt: true
     })
   });
-  throw new Error('Backend generation fallback not implemented');
+
+  if (!response.ok) throw new Error('Backend fallback failed');
+  const result = await response.json();
+  return result.optimized_prompt;
 }
 
 function finalizeAnalysis() {
@@ -263,7 +275,7 @@ runTestBtn.addEventListener('click', async () => {
       reader.readAsDataURL(state.audioFile);
     });
     
-    const transResponse = await fetch('https://voicelensG1.pragyaa.ai/vertex/transcript', {
+    const transResponse = await fetch('/api/vertex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -280,11 +292,12 @@ runTestBtn.addEventListener('click', async () => {
     
     // 2. Evaluation
     updateLoader('⚖️ Auditing transcript...');
-    const evalResponse = await fetch('https://voicelensG1.pragyaa.ai/vertex/generate', {
+    const evalResponse = await fetch('/api/vertex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: `${state.optimizedPrompt}\n\n[TRANSCRIPT TO AUDIT]:\n${transcript}`
+        prompt: `${state.optimizedPrompt}\n\n[TRANSCRIPT TO AUDIT]:\n${transcript}`,
+        model: "gemini-2.5-flash-lite"
       })
     });
     
@@ -489,7 +502,7 @@ Write a complete, production-ready compliance audit prompt for evaluating ICICI 
 
 Write the prompt in a clear, structured format with numbered sections. Include the actual data from the analysis to calibrate the rules. Make it production-ready — this will be directly deployed.`;
 
-  const VERTEX_GENERATE_URL = 'https://voicelensG1.pragyaa.ai/vertex/generate';
+  const VERTEX_GENERATE_URL = '/api/vertex';
   
   let lastError;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -499,6 +512,7 @@ Write the prompt in a clear, structured format with numbered sections. Include t
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: metaPrompt,
+          model: "gemini-2.5-flash-lite"
         })
       });
       
