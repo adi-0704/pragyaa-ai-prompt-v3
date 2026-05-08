@@ -16,6 +16,7 @@ let state = {
   deltas: null,
   optimizedPrompt: '',
   history: [],
+  engineMode: 'gemini',
 };
 
 // ─── DOM References ───────────────────────────
@@ -31,49 +32,84 @@ const promptSection = $('promptSection');
 const historySection = $('historySection');
 const loadingOverlay = $('loadingOverlay');
 const toast = $('toast');
+const engineModeSelect = $('engineMode');
 
-// ─── File Upload Handlers ─────────────────────
-dropzone.addEventListener('click', () => fileInput.click());
-dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-dropzone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropzone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) handleFile(file);
-});
-fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
-removeFile.addEventListener('click', () => {
-  state.file = null; state.rawData = null;
-  fileInfo.style.display = 'none';
-  dropzone.style.display = 'block';
-  analyzeBtn.disabled = true;
+// ─── Event Listeners ──────────────────────────
+engineModeSelect.addEventListener('change', (e) => {
+  state.engineMode = e.target.value;
+  if (state.engineMode === 'vertex') {
+    showToast('🚀 Backend Engine selected (Requires Vertex AI setup)');
+  }
 });
 
-function handleFile(file) {
-  state.file = file;
-  fileName.textContent = `${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
-  fileInfo.style.display = 'block';
-  dropzone.style.display = 'none';
-  analyzeBtn.disabled = false;
-}
+// ... (Rest of upload handlers) ...
 
 // ─── Analysis Pipeline ────────────────────────
 analyzeBtn.addEventListener('click', async () => {
   if (!state.file) return;
-  showLoading('Reading Excel file...');
+  showLoading('Processing...');
   
-  await sleep(300);
   try {
+    if (state.engineMode === 'vertex') {
+      updateLoader('Calling Backend API (Vertex AI)...');
+      await runBackendAnalysis();
+    } else {
+      updateLoader('Analyzing locally...');
+      await runLocalAnalysis();
+    }
+  } catch (err) {
+    hideLoading();
+    showToast('❌ Error: ' + err.message);
+    console.error(err);
+  }
+});
+
+async function runBackendAnalysis() {
+  const reader = new FileReader();
+  const fileBase64 = await new Promise((resolve) => {
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.readAsDataURL(state.file);
+  });
+
+  const response = await fetch('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      file_content: fileBase64,
+      current_prompt: $('currentPrompt').value,
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || 'Backend analysis failed');
+  }
+
+  const result = await response.json();
+  state.analysis = result.analysis;
+  state.deltas = result.deltas;
+  
+  const apiKey = $('apiKey').value.trim();
+  if (apiKey) {
+    updateLoader('🤖 Calling Gemini 1.5 Flash for final optimization...');
+    state.optimizedPrompt = await generatePromptWithGemini(apiKey, state.analysis, state.deltas, $('currentPrompt').value);
+    state.promptSource = 'ai';
+  } else {
+    updateLoader('Building template-based prompt...');
+    state.optimizedPrompt = buildTemplatePrompt(state.analysis, state.deltas, $('currentPrompt').value);
+    state.promptSource = 'template';
+  }
+
+  finalizeAnalysis();
+}
+
+async function runLocalAnalysis() {
     const data = await readExcel(state.file);
     state.rawData = data;
-    updateLoader('Analyzing AI vs Verifier discrepancies...');
-    await sleep(500);
+    updateLoader('Analyzing discrepancies...');
     
     state.analysis = analyzeRootCauses(data);
     updateLoader('Generating prompt deltas...');
-    await sleep(400);
-    
     state.deltas = generateDeltas(state.analysis);
     
     const currentPrompt = $('currentPrompt').value;
@@ -81,30 +117,22 @@ analyzeBtn.addEventListener('click', async () => {
     
     if (apiKey) {
       try {
-        // ── AI-Powered Prompt Generation ──
-        updateLoader('🤖 Calling Gemini 1.5 Flash to write optimized prompt...');
-        // Users requested limit on retries per optimisation
-        const maxRetries = 3; 
-        state.optimizedPrompt = await generatePromptWithGemini(apiKey, state.analysis, state.deltas, currentPrompt, maxRetries);
+        updateLoader('🤖 Calling Gemini 1.5 Flash...');
+        state.optimizedPrompt = await generatePromptWithGemini(apiKey, state.analysis, state.deltas, currentPrompt, 3);
         state.promptSource = 'ai';
       } catch (apiError) {
-        console.warn('Gemini API failed, falling back to template:', apiError);
-        showToast('⚠️ AI Optimization failed: ' + apiError.message);
-        updateLoader('Building template-based prompt instead...');
-        await sleep(400);
         state.optimizedPrompt = buildTemplatePrompt(state.analysis, state.deltas, currentPrompt);
         state.promptSource = 'template';
       }
     } else {
-      // ── Template Fallback ──
-      updateLoader('Building template-based prompt...');
-      await sleep(400);
       state.optimizedPrompt = buildTemplatePrompt(state.analysis, state.deltas, currentPrompt);
       state.promptSource = 'template';
-      showToast('ℹ️ No API Key found — using Template mode');
     }
     
-    // Update history
+    finalizeAnalysis();
+}
+
+function finalizeAnalysis() {
     state.history.push({
       timestamp: new Date().toISOString(),
       file: state.file.name,
@@ -119,19 +147,13 @@ analyzeBtn.addEventListener('click', async () => {
     renderHistory();
     hideLoading();
     
-    const sourceLabel = state.promptSource === 'ai' ? '🤖 AI-generated' : '📝 Template-based';
-    showToast(`✅ Analysis complete — ${sourceLabel} prompt ready`);
+    showToast(`✅ Analysis complete — ${state.promptSource === 'ai' ? '🤖 AI-generated' : '📝 Template-based'} prompt ready`);
     
     resultsSection.style.display = 'block';
     promptSection.style.display = 'block';
     historySection.style.display = 'block';
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch (err) {
-    hideLoading();
-    showToast('❌ Error: ' + err.message);
-    console.error(err);
-  }
-});
+}
 
 // ─── Excel Reader ─────────────────────────────
 async function readExcel(file) {
