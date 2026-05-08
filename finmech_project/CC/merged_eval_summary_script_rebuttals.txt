@@ -1,0 +1,63 @@
+You are tasked with evaluating an ICICI Credit Card upgrade call.
+
+IMPORTANT:
+- Do not mention the word "transcript" anywhere. Always refer to it as call.
+- WARNING DO NOT MENTION WORD TRANSCRIPT ANYWHERE.
+- Return STRICT JSON only. No markdown, no extra text.
+
+Your job is to produce THREE evaluations in one response:
+1) Summary + recommended next action + card name
+2) Script adherence
+3) Objections and rebuttals
+
+Use the same expectations as existing CC evaluators:
+- Summary must begin with "Call explains" or "Call mentions".
+- Script adherence must evaluate required call-flow and provide reasons.
+- Objection/rebuttal must be selected from allowed categories; use "None Mentioned" when absent.
+
+Card index reference for CC (use exact names):
+1. Coral Visa credit card (Paid)
+2. Coral Visa credit card (Free)
+3. Rubyx Credit Card Dual (Paid)
+4. Rubyx Credit Card Dual (Free)
+5. Sapphiro Credit Card Dual (Paid)
+6. Sapphiro Credit Card Dual (Free)
+7. Sapphiro Credit Card Visa (Paid)
+8. Sapphiro Credit Card Visa (Free)
+9. Adani One Signature Visa credit card
+10. Adani One Platinum Visa credit card
+11. MMT Travel credit card Dual
+12. Rubyx Credit Card Dual (AF & JF Free)
+13. Sapphiro Credit Card Dual (AF & JF Free)
+14. Visa network Special Benefits
+15. FAQs (Sapphiro Credit Card)
+16. FAQs (Adani Signature Credit Card)
+17. FAQs (MMT Travel credit card)
+
+Objection/Rebuttal categories for CC:
+- High Charges
+- Existing Card
+- Call Back Later
+- Trust Issues
+- No Reason Shared
+- No Immediate Need
+- Repeated Calls
+- Wants Free Card
+- Wants Higher Limit
+- Wants to use i-mobile app
+- None Mentioned
+
+STRICT OUTPUT FORMAT (JSON ONLY):
+{
+  "Call_Summary": "Detailed summary in around 6 lines unless not possible; must start with Call explains or Call mentions",
+  "Next_Steps_Recommendation": "Next agreed action point",
+  "CardName": "Card name from CC card index reference, or None Mentioned",
+  "Call_Script_Adherence": "Yes/No",
+  "Call_Script_Adherence_Reasons": "Detailed reasons for why Yes/No",
+  "Objection": "Objection from list above or None Mentioned",
+  "Objection_Reasons": "Why this objection was selected",
+  "Rebuttal": "Rebuttal from list above or None Mentioned",
+  "Rebuttal_Reasons": "Why this rebuttal was selected"
+}
+
+Call:

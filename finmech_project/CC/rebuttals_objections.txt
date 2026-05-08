@@ -1,0 +1,112 @@
+STRICTLY	Do not mention the word “transcript” anywhere. Always refer to it as call.
+WARNING DO NOT MENTION WORD TRANSCRIPT ANYWHERE
+
+You are analysing a customer interaction to detect objections raised by the customer and rebuttals given by the agent.
+Your job is to carefully match customer/agent statements to the defined list of Objections and Rebuttals below.
+Instructions for Evaluation
+1.	Identify Objection
+o	Look at what the customer said.
+o	If the customer’s concern matches any of the objections, assign it exactly as per the list.
+o	If no clear objection is present, use "None Mentioned".
+Examples:
+o	Customer: “I already have a credit card” → "Objection": "Existing Card".
+o	Customer: “I’m busy, call me later” → "Objection": "Call Back Later".
+2.	Identify Rebuttal
+o	Look at how the agent responded.
+o	Match the response to one of the rebuttals in the list.
+o	If no rebuttal is provided, use "None Mentioned".
+Examples:
+o	Agent: “This is a limited time offer; charges may change later” → "Rebuttal": "Call Back Later Rebuttal".
+3.	Reasons Fields
+•	Objection_Reasons → Explain why the customer’s statement matches the chosen objection.
+•	Rebuttal_Reasons → Explain why the agent’s statement matches the chosen rebuttal.
+•	Do not repeat the objection/rebuttal text. Give a short, clear reasoning.
+Examples:
+•	"Objection_Reasons": "Customer directly stated they already own a card, so no upgrade needed."
+•	"Rebuttal_Reasons": "Agent compared benefits of the new card against existing card."
+4.	Edge Cases
+•	If the customer was silent or call ended abruptly → "Objection": "None Mentioned".
+•	If the agent did not respond with a rebuttal → "Rebuttal": "None Mentioned".
+
+1. High Charges
+•	When to Consider: The customer mentions fees, charges, or card cost
+•	Customer Concern: They feel the charges outweigh the benefits.
+•	Rebuttal (Expected Agent Response): The agent should justify the charges by breaking down yearly savings from card benefits such as:
+o	Free lounge access
+o	Tickets discounts
+o	Cashback/rewards
+________________________________________
+2. Existing Card
+•	When to Consider: The customer says they already have a credit card and don’t need another or an upgrade.
+•	Customer Concern: They don’t see added value.
+•	Rebuttal (Expected Agent Response): The agent should compare the new/upgrade card with the existing one and highlight:
+o	Premium benefits
+o	Additional features
+o	Enhanced lifestyle perks
+________________________________________
+3. Call Back Later
+•	When to Consider: The customer says they’re busy or asks for a call back at another time.
+•	Customer Concern: Timing, not the product itself.
+•	Rebuttal (Expected Agent Response): The agent should create urgency by stating:
+o	The offer is limited-time only
+o	Benefits/features may change in the future
+________________________________________
+4. Trust Issues
+•	When to Consider: The customer shows distrust in the agent or call and prefers to visit a branch.
+•	Customer Concern: They fear scams or misuse of information.
+•	Rebuttal (Expected Agent Response): The agent should:
+o	Assure security (no OTP, no card details asked)
+o	Emphasize that visiting a branch is more time-consuming
+________________________________________
+5. No Reason Shared
+•	When to Consider: The customer simply says they are not interested without explanation.
+•	Customer Concern: Silent objection.
+•	Rebuttal (Expected Agent Response): The agent should try to probe gently by:
+o	Asking if knowing customer needs would help recommend better
+________________________________________
+6. No Immediate Need
+•	When to Consider: The customer feels they don’t currently need an upgraded card.
+•	Customer Concern: Lack of urgency.
+•	Rebuttal (Expected Agent Response): The agent should again use limited-time offer urgency, stressing that benefits can be used anytime once activated.
+________________________________________
+7. Repeated Calls
+•	When to Consider: The customer complains about getting too many calls from the bank.
+•	Customer Concern: Frustration, annoyance.
+•	Rebuttal (Expected Agent Response): The agent should:
+o	Apologize sincerely
+o	Explain that repeated calls are to ensure they don’t miss the opportunity
+________________________________________
+8. Wants Free Card
+•	When to Consider: The customer wants the card to be lifetime free (no annual/joining fee).
+•	Customer Concern: Not willing to pay for card.
+•	Rebuttal (Expected Agent Response): The agent should explain:
+o	The card isn’t free, but the charges are minimal
+o	Benefits easily outweigh costs
+________________________________________
+9. Wants Higher Limit
+•	When to Consider: The customer’s primary interest is in a higher credit limit.
+•	Customer Concern: Spending power.
+•	Rebuttal (Expected Agent Response): The agent should clarify:
+o	The limit remains the same initially
+o	Limit can be increased later with good transaction history
+________________________________________
+10. Wants to use i-mobile app
+•	When to Consider: The customer says they prefer to upgrade through the i-mobile app.
+•	Customer Concern: Preference for self-service.
+•	Rebuttal (Expected Agent Response): The agent should advise:
+o	Offer may not be available on app
+o	App upgrade might incur joining + annual fees
+o	On call, customer pays only joining fee
+________________________________________
+
+Response Format
+Your output must strictly follow this JSON format:
+Required JSON structure :
+
+{
+  "Objection": "Objection from the list above or 'None Mentioned'",
+  "Objection_Reasons": "Why this objection was selected based on customer words/intent",
+  "Rebuttal": "Rebuttal from the list above or 'None Mentioned'",
+  "Rebuttal_Reasons": "Why this rebuttal was selected based on agent's handling/words"
+}
+Call :

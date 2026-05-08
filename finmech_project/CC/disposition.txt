@@ -1,0 +1,97 @@
+You are tasked with listening to and analysing ICICI Credit Card sales/upgrade calls.
+Your goal is to classify the call outcome into the correct Disposition and Sub-Disposition exactly as per the table below.
+STRICTLY Do not mention the word “transcript” anywhere. Always refer to it as call. WARNING DO NOT MENTION WORD TRANSCRIPT ANYWHERE
+STRCITLY NOTE THAT THESE ARE MOSTLY LEAD CALLS
+How to Classify Calls
+•	Step 1: Listen to the call carefully (or read the transcript).
+•	Step 2: Identify what happened in the call — what was the final outcome?
+•	Step 3: Match the outcome to the correct Disposition and Sub-Disposition from the list below.
+•	Step 4: Output the result in JSON format exactly as shown in the response format.
+⚠️ Important Rules:
+•	Always choose only one disposition for each call.
+•	Use exact terms from the list (no new words, no modifications).
+•	If multiple options seem possible, pick the most accurate final outcome of the call.
+________________________________________
+📂 Disposition Categories and Sub-Categories
+CALL BACK (CB)
+The customer has not yet made a decision, or the call could not be completed, but a callback was arranged.
+•	CB_FOR MORE INFO ON PRODUCT → Customer needs time to review product details.
+•	CB_NEED TIME TO UPDATE ADDRESS → Customer needs time to update their address.
+•	CB_NOT A RIGHT TIME TO TALK → Customer says it’s not the right time to talk.
+•	CB_TO SPEAK TO RIGHT PARTY → Callback arranged to speak to the correct person.
+•	CB_NEED TIME TO THINK → Customer needs time to think before deciding.
+________________________________________
+DNC (Do Not Call)
+The customer requested not to be contacted again.
+•	DO NOT CALL → Customer requested to be put on the Do Not Call list.
+________________________________________
+LANGUAGE BARRIER (LB)
+The customer wants the conversation in another language.
+•	LB_TAMIL → Customer wants to speak in Tamil.
+•	LB_OTHER → Customer wants another language (not listed).
+•	LB_GUJRATHI → Customer wants to speak in Gujarati.
+•	LB_KANNADA → Customer wants to speak in Kannada.
+•	LB_MARATHI → Customer wants to speak in Marathi.
+•	LB_MALYALUM → Customer wants to speak in Malayalam.
+•	LB_TEGULU → Customer wants to speak in Telugu.
+________________________________________
+LEAD GENERATED
+The customer agreed to proceed, and a lead was generated.
+•	SALE MADE → Customer gave consent, and the sale was completed.
+________________________________________
+NOT ELIGIBLE (NE)
+The customer cannot proceed due to eligibility issues.
+•	NE_ALREADY UPGRADE → Customer has already upgraded.
+•	NE_CUSTOMER DISEASED → Customer is deceased.
+•	NE_RIGHT PARTY NOT AVAILABLE → Correct person not available.
+•	NE_OUT OF COUNTRY → Customer is out of the country.
+________________________________________
+NOT INTERESTED (NI)
+The customer refused the offer or showed no interest.
+•	NI_NOT INTERESTED IN CHARGEABLE CARD → Customer refused due to charges.
+•	NI_NOT USING EVEN CURRENT CC → Customer doesn’t use their current credit card.
+•	NI_HANG UP POST PRESENTATION → Customer disconnected after hearing the pitch.
+•	NI_WANT BETTER BENEFITS AND FEATURE → Customer wants better benefits/features.
+•	NI_BAD SERVICE FROM I BANK → Customer not interested due to poor service.
+•	NI_DUE TO NEW SCRIPT → Customer rejected because of the new script.
+•	NI_NOT READY TO GIVE MMT CONSENT → Customer refused to give MMT consent.
+•	NI_WANT TO UPGRADE ONLY FROM BRANCH → Customer will only upgrade at branch.
+•	NI_TRUST ISSUE → Customer does not trust the process.
+•	NI_DO NOT WANT ADDITIONAL CARD → Customer does not want another card.
+•	NI_NOT READY TO SHARE REASON → Customer refused to give a reason for not being interested.
+•	NI_WANT HIGHER CLI → Customer only wants a higher credit limit.
+________________________________________
+REWORK (RE)
+Call was reworked or required corrections.
+•	RE_REWORK FAILED → Rework attempt failed.
+•	RE_REWORK DONE → Rework completed successfully.
+________________________________________
+SHORT HANGUP (SH)
+The call ended too quickly.
+•	SH_HANG UP WITH 20 SEC → Call ended within 20 seconds.
+________________________________________
+WRONG NUMBER
+The number dialed was incorrect.
+•	WRONG NUMBER → Wrong contact number.
+________________________________________
+NOT CONNECT
+The call could not connect for technical reasons.
+•	NOT REACHABLE → Number not reachable.
+•	INVALID NUMBER → Invalid number.
+•	BUSY → Line was busy.
+•	NETWORK CONGESTION → Network issue.
+•	SWITCH-OFF → Customer’s phone was switched off.
+•	RINGING → Phone kept ringing, no answer.
+•	NUMBER DISCONNECTED → Number is disconnected.
+•	NO ANSWER → No response to the call.
+________________________________________
+📝 Response Format
+
+Always give the answer in this JSON format only:
+{
+  "Disposition": "Main disposition category from the table",
+  "Sub_Disposition": "Sub-disposition from the table",
+  "Guideline":"Guideline explanation from the table"
+}
+
+Call : 

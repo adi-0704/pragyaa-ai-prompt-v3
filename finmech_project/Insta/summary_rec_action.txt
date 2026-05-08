@@ -1,0 +1,85 @@
+🚨🚨🚨 CRITICAL FIELD NAME REQUIREMENTS - USE EXACTLY THESE FIELD NAMES:
+- "Call_Summary" (NOT "call_summary", "CallSummary", "Call Summary" or any variation)
+- "Next_Steps_Recommendation" (NOT "next_steps_recommendations", "NextStepsRecommendation" or any variation)
+- "Call_Synopsis" (NOT "call_synopsis", "CallSynopsis" or any variation)
+- "CardName" (NOT "card_name", "Card_Name", "Card Name" or any variation)
+- "Positives" (NOT "positive", "Positive", "Positive Points" or any variation)
+- "Areas_of_Improvement" (NOT "areas_of_improvement", "AreasOfImprovement" or any variation)
+
+⚠️ WARNING: Any deviation from these exact field names will cause system failure and require reprocessing
+
+Evaluate the given call transcript below. This is a customer care call conversation between an ICICI Insta Credit Cards customer agent and a prospective customer.
+If any wrong spelling mentioned like 'ICC' then correct to ICICI.
+**Task:** Evaluate the call transcript and provide the next action point as agreed upon during the call.
+
+CRITICAL: You MUST provide meaningful content for ALL fields. Empty strings will cause system failure. Even for very short calls, analyze what happened and provide detailed recommendations.
+
+**Requirements:**
+- Do not mention the word 'transcript' anywhere - use 'Call' instead
+- Your response must be in the following JSON structure format to match the OpenSearch mapping
+- NEVER return empty strings "" for any field - this will cause system failure
+- ALWAYS provide meaningful content for each field based on the call content
+- Even for short calls, provide detailed analysis and recommendations
+- If call is brief, analyze what was said and what should have been said
+
+
+**Call Transcript:**
+[Insert call transcript here for evaluation]
+
+🚨🚨🚨 CRITICAL FIELD NAME REQUIREMENTS - USE EXACTLY THESE FIELD NAMES:
+- "Call_Summary" (NOT "CallSummary", "call_summary", "Call Summary" or any variation)
+- "Next_Steps_Recommendation" (NOT "NextStepsRecommendation", "next_steps_recommendation" or any variation)
+- "Call_Synopsis" (NOT "CallSynopsis", "call_synopsis" or any variation)
+- "CardName" (NOT "Card_Name", "card_name", "Card Name" or any variation)
+- "Positives" (NOT "Positive", "positive", "Positive Points" or any variation)
+- "Areas_of_Improvement" (NOT "AreasOfImprovement", "areas_of_improvement" or any variation)
+
+🚨 FINAL REMINDER: Use EXACTLY these field names: "Call_Summary", "Next_Steps_Recommendation", "Call_Synopsis", "CardName", "Positives", "Areas_of_Improvement"
+
+Strictly follow the ONLY following JSON when giving output DO NOT ADD OR REMOVE ANY FIELD oF THis:
+
+```json
+{
+  "Call_Summary": "Detailed Summary of the call in atleast 6 lines unless call is small. Use varied sentence starters like 'The agent', 'Customer', 'During the call', 'The conversation', 'Agent explained', 'Customer mentioned', etc. Don't give random summary at any cost, give less if less details mentioned",
+  "Next_Steps_Recommendation": "One to two sentence with actor, action, timeline (e.g., 'Agent to send link via SMS within 15 minutes')",
+  "Call_Synopsis": "2–3 lines on core outcome and commitments",
+  "CardName": "Name of the Credit Card mentioned. Available Insta Credit Cards: Insta Credit Card, Accelero Credit Card, Sapphiro Credit Card, Rubyx Credit Card, Rubyx Credit Card (Rupay), Coral Credit Card, Coral Credit Card (Rupay), HPCL Coral Credit Card, HPCL Coral Visa Credit Card, HPCL Super Saver Credit Card, HPCL Super Saver (Rupay), Platinum Chip Credit Card, Defence Platinum ICICI Bank Credit Card, Defence Signature ICICI Bank Credit Card, Manchester United Credit Card, Chennai Super King Credit Card, Mine Credit Card, Adani One ICICI Bank CBCC, Emeralde Credit Card, Emirates ICICI Bank Cobranded Credit Card",
+  "Positives":"2–4 short phrases of good practices separated by comma, not in a list(e.g., 'clear guidance', 'proper verification')",
+  "Areas_of_Improvement":"2–4 actionable phrases separated by comma, not in a list (e.g., 'confirm delivery timeline', 'clarify OTP step')",
+}
+```
+
+⚠️ WARNING: Any deviation from these exact field names will cause system failure and require reprocessing.
+
+FIELD CONTENT REQUIREMENTS:
+- Call_Summary: MUST be at least 6 lines unless the call is short, use varied sentence starters for better readability. Give only based on what has happened in the call. Don't give anything else.
+- Next_Steps_Recommendation: MUST include actor, action, and timeline
+- Call_Synopsis: MUST be 2-3 lines about core outcome
+- CardName: MUST be the actual card name mentioned in the call. Available Insta Credit Cards include: Insta Credit Card, Accelero Credit Card, Sapphiro Credit Card, Rubyx Credit Card, Rubyx Credit Card (Rupay), Coral Credit Card, Coral Credit Card (Rupay), HPCL Coral Credit Card, HPCL Coral Visa Credit Card, HPCL Super Saver Credit Card, HPCL Super Saver (Rupay), Platinum Chip Credit Card, Defence Platinum ICICI Bank Credit Card, Defence Signature ICICI Bank Credit Card, Manchester United Credit Card, Chennai Super King Credit Card, Mine Credit Card, Adani One ICICI Bank CBCC, Emeralde Credit Card, Emirates ICICI Bank Cobranded Credit Card. Use the exact card name as mentioned in the call transcript.
+- Positives: MUST be 2-4 phrases separated by commas
+- Areas_of_Improvement: MUST be 2-4 phrases separated by commas
+- NO EMPTY STRINGS ALLOWED - system will fail if any field is empty
+
+EXAMPLES FOR SHORT CALLS:
+- If call only has greeting: "The agent Madhuri introduced herself from ICICI Bank but the call ended abruptly without customer response. No further interaction occurred beyond the initial greeting."
+- If call is brief: Still provide detailed analysis of what happened and what should have happened
+- Always provide meaningful recommendations even for incomplete calls
+
+## Hard JSON Output Constraints
+- Output must be a single JSON object with exactly these keys in this order: Call_Summary, Next_Steps_Recommendation, Call_Synopsis, CardName, Positives, Areas_of_Improvement.
+- Keys are case-sensitive. Do not rename or add fields.
+- Do not include markdown, code fences, comments, or any text before or after the JSON.
+- Do not wrap the JSON in backticks. Return raw JSON only.
+- Do not add extra fields, arrays, or nested objects.
+- If uncertain, leave the value as an empty string "" (never null, never omit the key).
+- Return exactly one JSON object, not an array.
+- Use valid JSON only: double quotes for keys and string values, no trailing commas.
+
+Validation checklist for the final answer (must be true):
+- Starts with '{' and ends with '}'.
+- Contains only the six specified keys in the given order.
+- No content other than the JSON object is present in the output.
+
+
+Transcript :
+

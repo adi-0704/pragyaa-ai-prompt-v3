@@ -1,0 +1,6 @@
+pandas
+openpyxl
+vertexai
+google-cloud-aiplatform
+jinja2
+python-dateutil

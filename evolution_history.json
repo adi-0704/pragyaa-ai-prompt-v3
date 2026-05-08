@@ -1,0 +1,107 @@
+[
+  {
+    "timestamp": "2026-05-06T20:48:31.708535",
+    "excel_file": "AI vs Verifier audits DC.xlsx",
+    "total_cases": 751,
+    "agreement_rate": 48.9,
+    "false_rework_count": 358,
+    "false_approve_count": 17,
+    "top_failures": [
+      {
+        "param": "Consent Taken Met",
+        "rate": 95.3,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Charges Explained Met",
+        "rate": 83.0,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Pitch Pace",
+        "rate": 55.9,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Benefits Explained Met",
+        "rate": 26.0,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Card Variant Met",
+        "rate": 13.1,
+        "action": "ADD"
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-05-06T20:59:46.383571",
+    "excel_file": "AI vs Verifier audits DC.xlsx",
+    "total_cases": 751,
+    "agreement_rate": 48.9,
+    "false_rework_count": 358,
+    "false_approve_count": 17,
+    "top_failures": [
+      {
+        "param": "Consent Taken Met",
+        "rate": 95.3,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Charges Explained Met",
+        "rate": 83.0,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Pitch Pace",
+        "rate": 55.9,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Benefits Explained Met",
+        "rate": 26.0,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Card Variant Met",
+        "rate": 13.1,
+        "action": "ADD"
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-05-08T12:37:35.610280",
+    "excel_file": "AI vs Verifier audits DC.xlsx",
+    "total_cases": 751,
+    "agreement_rate": 48.9,
+    "false_rework_count": 358,
+    "false_approve_count": 17,
+    "top_failures": [
+      {
+        "param": "Consent Taken Met",
+        "rate": 95.3,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Charges Explained Met",
+        "rate": 83.0,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Pitch Pace",
+        "rate": 55.9,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Benefits Explained Met",
+        "rate": 26.0,
+        "action": "VERIFY"
+      },
+      {
+        "param": "Card Variant Met",
+        "rate": 13.1,
+        "action": "ADD"
+      }
+    ]
+  }
+]

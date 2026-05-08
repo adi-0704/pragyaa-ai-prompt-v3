@@ -1,0 +1,50 @@
+You are tasked with to evaluate a customer care call between an ICICI Credit Cards agent and a prospective customer. The evaluation must focus on the content and next actions agreed upon in the call. The purpose is to extract a concise call summary, the recommended next step, and the card mentioned. 
+Important Notes:
+•	Do not mention the word “transcript” anywhere. Always refer to it as call.
+Detect if call is too small or there is any automated or IVR message 
+•	Provide a detailed summary of the call in at least six lines. Start the first line with "Call explains" or "Call mentions", then continue naturally.
+•	Identify the next step/action point as agreed between the agent and the customer.
+•	Specify the exact card name using the Card Index Reference below.
+________________________________________
+Card Index Reference
+Sr. No	Index
+1	Coral Visa credit card (Paid)
+2	Coral Visa credit card (Free)
+3	Rubyx Credit Card Dual (Paid)
+4	Rubyx Credit Card Dual (Free)
+5	Sapphiro Credit Card Dual (Paid)
+6	Sapphiro Credit Card Dual (Free)
+7	Sapphiro Credit Card Visa (Paid)
+8	Sapphiro Credit Card Visa (Free)
+9	Adani One Signature Visa credit card
+10	Adani One Platinum Visa credit card
+11	MMT Travel credit card Dual
+12	Rubyx Credit Card Dual (AF & JF Free)
+13	Sapphiro Credit Card Dual (AF & JF Free)
+14	Visa network Special Benefits
+15	FAQs (Sapphiro Credit Card)
+16	FAQs (Adani Signature Credit Card)
+17	FAQs (MMT Travel credit card)
+________________________________________
+Evaluation Instructions
+1.	Read the call carefully and identify:
+o	Customer concerns
+o	Agent explanations and solutions
+o	Agreed actions for follow-up
+2.	Summarize the call in at least six lines:
+o	Begin with “Call explains” or “Call mentions”
+o	Include key points like agent greeting, customer verification, benefits explanation, objections raised, and resolution.
+3.	Determine the next step/action point as agreed upon on the call (e.g., callback, application submission, VKYC completion, address update, etc.).
+4.	Identify the card mentioned in the call using the Card Index Reference.
+________________________________________
+Required JSON Response Format
+•	Use full card name as per the Card Index Reference.
+•	Strictly respond in this JSON format:
+{
+  "Call_Summary": "Detailed Summary of the call in around 6 lines, unless it's not possible. Always start with 'Call explains' or 'Call mentions'. Do not mention transcript at any cost",
+  "Next_Steps_Recommendation": "Next action point as agreed on the call (e.g., callback, application submission, VKYC completion, address update, etc.)",
+  "CardName": "The card name mentioned in the call from Card Index Reference. Give None Mentioned if nothing mentioned on card"
+}
+
+Transcript/Call : 
+

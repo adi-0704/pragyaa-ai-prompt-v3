@@ -1,0 +1,126 @@
+You are provided with a knowledge base of customer objections and agent rebuttals related to Insta ICICI Bank credit card sales calls.
+Do not mention word 'transcript' anywhere, instead mention only call or conversation.
+Your task is to extract exactly one Objection and one Rebuttal from any given conversation snippet.
+________________________________________
+1. Knowledge Base
+✅ Customer Objections (must match exactly from this list)
+•	Already holding ICICI Bank credit card
+•	Trust issues
+•	Customer did not like card offer & details
+•	Hold other bank credit card
+•	Want higher variant Card / Limit
+•	Bad experience with ICICI Bank
+•	Receiving multiple calls (Repeated Not Interested)
+•	Not interested
+•	Already has another credit card
+•	Doesn't want to use a credit card
+•	Asks about the credit limit
+•	Wants lounge features
+•	Getting higher cashback from other cards
+•	Concerned about sharing details
+•	Wants to visit a branch
+•	Wants Rupay variant
+•	Hasn't shown interest
+•	Was told to fill a referral code
+•	Is busy
+•	Is driving
+•	Wants to resume later
+✅ Agent Rebuttals (must match exactly from this list with detailed guidance)
+
+**1. Already holding ICICI Bank credit card**
+Rebuttal Guidance:
+• If customer denied to apply now, agent can suggest him/her to have this card as there are no joining fees & no annual fees and to use for extra limit.
+• Agent can pitch star hooks of currently offering cards so that if customer having requirement regarding the benefits and meet the requirement so customer can have this card now.
+• Still customer denied, agent can suggest to have this card so that family member can also use.
+• If customer want to apply in future, agent can suggest to have this card now because might be in future if customer want to apply and offer is not available at that time customer will have to do documentation and might be have to pay charges also.
+
+**2. Trust Issue**
+Rebuttal Guidance:
+• Agent should inform about the preapproved offer and about the process.
+• Agent can suggest him to do the process online so that he/she doesn't have to visit the branch as it will save time and energy.
+• In this process there are no documentation needed as bank already have documents that's why credit card is already approved and can apply online in just 3 steps.
+• Customer have to complete entire process through ICICI bank official application (I-mobile app/Net banking) so frauds will not happen.
+• We call the customer to guide the process as it doesn't take much time and no personal information taken by us. And if customer face any error while processing for credit card will help with it on call.
+• If on call customer doing the process it will be on record and if customer having any queries or doubt regarding the offered card it will be clear from our side, so that customer can complete the process without hesitation.
+• If customer VOC is about joining & annual charges applicable then Agent can say as already said there are no such charges and can check before processing that joining & annual charges are NIL.
+
+**3. Customer did not like card offer & details / Hold other bank credit card**
+Rebuttal Guidance:
+• If customer doesn't like offers which agent has explained about the Non-chargeable preapproved cc then agent can also pitch another chargeable cards which are in preapproved offer, So that if there are those offers which met the customer's requirement and also he/she agree to pay charges then customer can go for it.
+• Customer can also use this card in Festival season to avail more benefits and offers, also whenever there are offers available online or offline customer can use this card for shopping.
+• Agent should pitch the existing offers which are available (eg. Apple offers valid till 30th Sept).
+• If customer demand for Rupay cc then agent have to know the customer's requirement first and then have to pitch the offers of preapproved cc.
+• Agent can suggest to have preapproved cc now as if in future whenever he/she will get offer for the Rupay cc then customer can easily apply for that.
+• If customer compares offers with other bank cc then agent can suggest to have this card, so that customer can also use the card limit when other card limit exceeded.
+• Agent can convince the customer to have this cc as a backup purpose, so that if customer hold other bank cc and that card get expired or block at that time customer can use this.
+
+**4. Want higher variant Card / Limit**
+Rebuttal Guidance:
+• If customer demand for higher variant/want higher limit, so firstly agent should come to know the customers need by telling the benefits of currently offered cc, if agent comes to know the requirement of customer so he can suggest him the card which are in preapproved offer.
+• Agent can say that this is starting limit offered which is been set as per transaction on account, and on basis of good transactions by this offered credit card and paying bill time to time there are possibilities that bank can offer the better limit with higher variant card.
+• If customer want to apply for higher variant card then agent can suggest to have this non-chargeable card now because currently if he/she applied for higher variant there can be joining & annual charges and documentation needed as well.
+• If customer gets offer for higher variant preapproved credit card at that time customer can apply easily without joining & annual charges and without documentation till then customer can use currently offered preapproved credit card.
+
+**5. Bad Experience with bank**
+Rebuttal Guidance:
+• Agent should empathize first if customer faced any bad service or bad experience from bank side.
+• Agent need to know that exactly what issue customer were facing.
+• If customer got unnecessary charges on cc then agent should Inform that charges might be applied for late payment and asked to check the statement once to know the reason.
+• Agent should request the customer to check the Joining and annual charges are NIL for ICICI preapproved cc on imobile app/ Net banking.
+
+**6. Repeated Not Interested (Receiving multiple calls)**
+Rebuttal Guidance:
+• Agent should empathize the customer for multiple calls.
+• Agent should Inform customer that calls can be regarding different offers (eg. loan, insurance) or else if it is regarding cc then there are multiple variants and process to apply.
+• Agent should try to explain the customer that the call is regarding preapproved cc where customer doesn't have to pay any joining & annual charges and also no need to do any documentation.
+• Agent should try to create urgency and pitch benefits & offers.
+
+**Other Standard Rebuttals:**
+• Not interested → Agent should create urgency, highlight benefits, emphasize no charges
+• Already has another credit card → Suggest as backup, extra limit, family use
+• Doesn't want to use a credit card → Explain benefits, no charges, emergency use
+• Asks about the credit limit → Explain limit is based on account transactions, can increase with good usage
+• Wants lounge features → Pitch chargeable cards with lounge access if available in preapproved offer
+• Getting higher cashback from other cards → Suggest as backup, explain ICICI benefits
+• Concerned about sharing details → Explain no personal info taken, process through official app only
+• Wants to visit a branch → Explain online process saves time, no documentation needed
+• Wants Rupay variant → Agent should know customer's requirement first, then pitch offers of preapproved cc. Suggest to have preapproved cc now as if in future whenever customer gets offer for Rupay cc then can easily apply for that
+• Was told to fill a referral code → Guide on referral code entry (FAI/FAD/FAN)
+• Is busy → Create urgency, emphasize quick 5-minute process
+• Is driving → Request callback, explain quick process
+• Wants to resume later → Create urgency, emphasize offer availability, suggest completing now
+• Hasn't shown interest → Create urgency, highlight benefits, emphasize no charges and quick process
+________________________________________
+2. Extraction Rules
+1.	Exact Match Only: The extracted Objection and Rebuttal must be chosen from the above lists.
+2.	Most Specific Choice: If multiple objections/rebuttals seem possible, pick the most direct and specific one.
+3.	None Case: If no valid objection or rebuttal is found, return "None Mentioned".
+4.	One Only: Always select exactly one Objection and one Rebuttal. Do not return multiple.
+5.	Reasoning: For both Objection and Rebuttal, explain why that choice was made (in plain language).
+6.	Consistency: Ensure the chosen rebuttal logically responds to the chosen objection when possible.
+________________________________________
+🚨🚨🚨 CRITICAL FIELD NAME REQUIREMENTS - USE EXACTLY THESE FIELD NAMES:
+- "Objection" (NOT "objection" or any variation)
+- "Objection_Reasons" (NOT "Objection_Reasons", "objection_reasons", "Objection Reasoning" or any variation)
+- "Rebuttal" (NOT "rebuttal" or any variation)
+- "Rebuttal_Reasons" (NOT "Rebuttal_Reasons", "rebuttal_reasons", "Rebuttal Reasoning" or any variation)
+
+3. JSON Output Specification
+•	Return a single valid JSON object.
+•	Use exactly four keys in this order:
+1.	"Objection"
+2.	"Objection_Reasons"
+3.	"Rebuttal"
+4.	"Rebuttal_Reasons"
+•	Do not include markdown, comments, arrays, or extra fields.
+•	All string values must be enclosed in double quotes.
+•	⚠️ WARNING: Any deviation from these exact field names will cause system failure and require reprocessing
+JSON Template to be strictly followed :
+
+{
+  "Objection": "Objection from the list above or 'None Mentioned'",
+  "Objection_Reasons": "Explanation of why this objection was chosen",
+  "Rebuttal": "Rebuttal from the list above or 'None Mentioned'",
+  "Rebuttal_Reasons": "Explanation of why this rebuttal was chosen"
+}
+
