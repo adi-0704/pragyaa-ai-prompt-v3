@@ -89,15 +89,15 @@ async function runBackendAnalysis() {
   state.analysis = result.analysis;
   state.deltas = result.deltas;
   
-  const apiKey = $('apiKey').value.trim();
-  if (apiKey) {
-    updateLoader('🤖 Calling Gemini 1.5 Flash for final optimization...');
-    state.optimizedPrompt = await generatePromptWithGemini(apiKey, state.analysis, state.deltas, $('currentPrompt').value);
+  try {
+    updateLoader('🤖 Calling Vertex AI for final optimization...');
+    state.optimizedPrompt = await generatePromptWithVertex(state.analysis, state.deltas, $('currentPrompt').value);
     state.promptSource = 'ai';
-  } else {
-    updateLoader('Building template-based prompt...');
+  } catch (err) {
+    updateLoader('Building template-based prompt (Vertex API failed)...');
     state.optimizedPrompt = buildTemplatePrompt(state.analysis, state.deltas, $('currentPrompt').value);
     state.promptSource = 'template';
+    console.error(err);
   }
 
   finalizeAnalysis();
@@ -113,18 +113,13 @@ async function runLocalAnalysis() {
     state.deltas = generateDeltas(state.analysis);
     
     const currentPrompt = $('currentPrompt').value;
-    const apiKey = $('apiKey').value.trim();
     
-    if (apiKey) {
-      try {
-        updateLoader('🤖 Calling Gemini 1.5 Flash...');
-        state.optimizedPrompt = await generatePromptWithGemini(apiKey, state.analysis, state.deltas, currentPrompt, 3);
-        state.promptSource = 'ai';
-      } catch (apiError) {
-        state.optimizedPrompt = buildTemplatePrompt(state.analysis, state.deltas, currentPrompt);
-        state.promptSource = 'template';
-      }
-    } else {
+    try {
+      updateLoader('🤖 Calling Vertex AI...');
+      state.optimizedPrompt = await generatePromptWithVertex(state.analysis, state.deltas, currentPrompt, 1);
+      state.promptSource = 'ai';
+    } catch (apiError) {
+      console.error(apiError);
       state.optimizedPrompt = buildTemplatePrompt(state.analysis, state.deltas, currentPrompt);
       state.promptSource = 'template';
     }
@@ -288,13 +283,13 @@ function generateDeltas(analysis) {
   return deltas;
 }
 
-// ─── Gemini AI Prompt Generator ───────────────
-async function generatePromptWithGemini(apiKey, analysis, deltas, currentPrompt, maxRetries = 3) {
+// ─── Vertex AI Prompt Generator ───────────────
+async function generatePromptWithVertex(analysis, deltas, currentPrompt, maxRetries = 1) {
   const s = analysis.summary;
   const cp = analysis.consentPatterns;
   const ch = analysis.chargesPatterns;
   
-  // Build the meta-prompt that instructs Gemini to write the audit prompt
+  // Build the meta-prompt that instructs Vertex AI to write the audit prompt
   const metaPrompt = `You are an expert prompt engineer specializing in compliance audit automation.
 
 I have analyzed ${s.total} ICICI Bank Debit Card upgrade call audits comparing AI verdicts vs Human Verifier verdicts. Here is the data:
@@ -339,34 +334,34 @@ Write a complete, production-ready compliance audit prompt for evaluating ICICI 
 
 Write the prompt in a clear, structured format with numbered sections. Include the actual data from the analysis to calibrate the rules. Make it production-ready — this will be directly deployed.`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const VERTEX_GENERATE_URL = 'https://voicelensG1.pragyaa.ai/vertex/generate';
   
   let lastError;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, {
+      const response = await fetch(VERTEX_GENERATE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: metaPrompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 8192,
-          }
+          prompt: metaPrompt,
         })
       });
       
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Gemini API error (${response.status}): ${errText.substring(0, 200)}`);
+        throw new Error(`Vertex AI error (${response.status}): ${errText.substring(0, 200)}`);
       }
       
       const result = await response.json();
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      // Extract text from Vertex AI response — handle multiple possible response shapes
+      let text = result.text || result.response || result.content || result.candidates?.[0]?.content?.parts?.[0]?.text || (typeof result === 'string' ? result : null);
+      if (typeof text === 'object') {
+          text = JSON.stringify(text);
+      }
       
-      if (!text) throw new Error('Gemini returned empty response');
+      if (!text) throw new Error('Vertex AI returned empty response');
       
-      return `# AI-GENERATED AUDIT PROMPT — Gemini 1.5 Flash\n# Based on: ${state.file.name} (${s.total} cases analysis)\n# Generated: ${new Date().toLocaleString()}\n# Agreement target: >85% (current: ${s.agreementRate}%)\n\n${text}`;
+      return `# AI-GENERATED AUDIT PROMPT — Vertex AI\n# Based on: ${state.file.name} (${s.total} cases analysis)\n# Generated: ${new Date().toLocaleString()}\n# Agreement target: >85% (current: ${s.agreementRate}%)\n\n${text}`;
     } catch (err) {
       lastError = err;
       console.warn(`Attempt ${attempt} failed:`, err);
@@ -580,7 +575,7 @@ function renderResults() {
 function renderPrompt() {
   // Show source badge
   const badge = state.promptSource === 'ai'
-    ? '<span class="ai-badge">🤖 Gemini 2.5 Flash</span>'
+    ? '<span class="ai-badge">🤖 Vertex AI</span>'
     : '<span class="ai-badge template">📝 Template</span>';
   $('promptSection').querySelector('h2').innerHTML = 'Optimized Prompt ' + badge;
   

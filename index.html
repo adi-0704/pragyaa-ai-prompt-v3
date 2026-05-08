@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pragyaa.AI — Prompt Evolution Engine</title>
-  <meta name="description" content="OpenClaw/Hermes powered audit prompt optimizer for ICICI Bank DC verification pipeline">
+  <meta name="description" content="Vertex AI powered audit prompt optimizer for ICICI Bank DC verification pipeline">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -26,7 +26,7 @@
     </div>
     <div class="header-badge">
       <span class="badge-dot"></span>
-      OpenClaw / Hermes
+      Vertex AI Engine
     </div>
   </header>
 
@@ -44,13 +44,16 @@
       <!-- Settings / Configuration -->
       <div class="settings-grid">
         <div class="settings-col">
-          <label class="input-label">Gemini API Key</label>
-          <input type="password" id="apiKey" class="prompt-textarea" style="height: 48px; min-height: 48px;" placeholder="AIzaSy...">
+          <label class="input-label">AI Engine</label>
+          <div class="engine-status">
+            <span class="engine-dot"></span>
+            <span class="engine-name">Vertex AI</span>
+          </div>
         </div>
         <div class="settings-col">
           <label class="input-label">Engine Mode</label>
           <select id="engineMode" class="prompt-textarea" style="height: 48px; min-height: 48px; padding: 0 12px;">
-            <option value="gemini">Gemini API (Direct)</option>
+            <option value="gemini">Vertex AI (Local Mode)</option>
             <option value="vertex">Vertex AI (Backend)</option>
           </select>
         </div>
