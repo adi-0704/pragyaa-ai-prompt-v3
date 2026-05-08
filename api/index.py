@@ -8,8 +8,6 @@ import base64
 import requests
 
 # Import logic from the root script
-# Since Vercel puts the api/ folder in a specific environment, we might need to adjust imports
-# Or just copy the necessary functions here for reliability in a serverless env
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -22,7 +20,6 @@ try:
         SDK_AVAILABLE
     )
 except ImportError:
-    # Fallback if import fails in Vercel env
     INTERNAL_API_AVAILABLE = True
     SDK_AVAILABLE = False
 
@@ -42,6 +39,7 @@ def preprocess_df(df):
     return df
 
 @app.route('/api/analyze', methods=['POST'])
+@app.route('/analyze', methods=['POST'])
 def analyze():
     try:
         data = request.json
@@ -74,7 +72,6 @@ def analyze():
         
         if generate_prompt:
             try:
-                # Call evolution logic from the automation script
                 from openclaw_audit_automation import evolve_prompt_vertex
                 optimized_prompt = evolve_prompt_vertex(analysis, deltas, current_prompt, "/tmp")
                 if not optimized_prompt:
@@ -113,16 +110,15 @@ def analyze():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/vertex', methods=['POST'])
+@app.route('/vertex', methods=['POST'])
 def vertex_proxy():
     try:
         data = request.json
         from openclaw_audit_automation import VERTEX_GENERATE_URL, VERTEX_TRANSCRIPT_URL
         
-        # Determine target URL based on request type
         is_transcript = 'audio' in data
         url = VERTEX_TRANSCRIPT_URL if is_transcript else VERTEX_GENERATE_URL
         
-        # Forward request to Vertex API
         response = requests.post(url, json=data, timeout=60)
         
         if response.status_code == 200:
@@ -133,6 +129,7 @@ def vertex_proxy():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/health', methods=['GET'])
+@app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"})
 
