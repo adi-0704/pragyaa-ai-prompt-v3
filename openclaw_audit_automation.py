@@ -12,12 +12,17 @@ import io
 import os
 import json
 import time
+import requests
 import pandas as pd
 import openpyxl
 from datetime import datetime
 from pathlib import Path
 
-# Vertex AI Integration
+# Vertex AI Configuration
+VERTEX_GENERATE_URL = "https://voicelensG1.pragyaa.ai/vertex/generate"
+VERTEX_TRANSCRIPT_URL = "https://voicelensG1.pragyaa.ai/vertex/transcript"
+
+# Vertex AI Integration (Legacy/Optional - We now prefer the direct API)
 try:
     import vertexai
     from vertexai.generative_models import GenerativeModel, Part, GenerationConfig
@@ -308,26 +313,8 @@ def compare_prompt_with_data(prompt: str, deltas: list) -> list:
 # ─────────────────────────────────────────────
 
 def evolve_prompt_vertex(analysis: dict, deltas: list, current_prompt: str, prompt_dir: str, max_retries: int = 3) -> str:
-    """Uses Vertex AI (Gemini 1.5 Flash) to evolve the prompt based on analysis."""
-    if not VERTEX_AVAILABLE:
-        print("[6/6] ⚠ Vertex AI SDK not installed. Skipping evolution.")
-        return ""
-
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-    location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-
-    if not project_id:
-        print("[6/6] ⚠ GOOGLE_CLOUD_PROJECT env var not set. Skipping evolution.")
-        return ""
-
-    try:
-        vertexai.init(project=project_id, location=location)
-        # Use gemini-1.5-flash for fast, efficient prompt engineering
-        model = GenerativeModel("gemini-1.5-flash")
-    except Exception as e:
-        print(f"[6/6] ❌ Failed to initialize Vertex AI: {e}")
-        return ""
-
+    """Uses the company's internal Vertex AI API to evolve the prompt based on analysis."""
+    
     # Construct Meta-Prompt (similar to frontend/app.js)
     s = analysis['summary']
     d_str = "\n".join([f"- {d['parameter']}: {d['fix']} (Failure Rate: {d['failure_rate']}%)" for d in deltas])
@@ -362,29 +349,47 @@ REVISION RULES:
 OUTPUT ONLY THE PROMPT.
 """
 
-    print(f"[6/6] 🤖 Evolving prompt with Vertex AI | Max Retries: {max_retries}")
+    print(f"[6/6] 🤖 Evolving prompt via Internal API ({VERTEX_GENERATE_URL})")
     
     retries = 0
     while retries < max_retries:
         try:
-            response = model.generate_content(
-                meta_prompt,
-                generation_config=GenerationConfig(temperature=0.2)
+            response = requests.post(
+                VERTEX_GENERATE_URL,
+                json={"prompt": meta_prompt},
+                timeout=60
             )
-            if response.text:
-                print(f"  ✓ Prompt evolved successfully (Attempt {retries + 1})")
-                return response.text.strip()
+            
+            if response.status_code == 200:
+                result = response.json()
+                # Extract text from various possible response formats
+                text = ""
+                if isinstance(result, dict):
+                    text = result.get('text') or result.get('response') or result.get('content') or ""
+                    if not text and 'candidates' in result:
+                        try:
+                            text = result['candidates'][0]['content']['parts'][0]['text']
+                        except: pass
+                elif isinstance(result, str):
+                    text = result
+                
+                if text:
+                    print(f"  ✓ Prompt evolved successfully (Attempt {retries + 1})")
+                    return text.strip()
+                else:
+                    raise ValueError(f"Could not find prompt text in API response: {result}")
             else:
-                raise ValueError("Empty response from Vertex AI")
+                raise ValueError(f"API Error ({response.status_code}): {response.text}")
+                
         except Exception as e:
             retries += 1
-            print(f"  ⚠ Vertex AI attempt {retries} failed: {str(e)}")
+            print(f"  ⚠ API attempt {retries} failed: {str(e)}")
             if retries < max_retries:
                 wait_time = 2 ** retries
                 print(f"    Retrying in {wait_time}s...")
                 time.sleep(wait_time)
             else:
-                print("  ❌ Vertex AI evolution failed after maximum retries.")
+                print("  ❌ API evolution failed after maximum retries.")
                 return ""
     return ""
 

@@ -11,6 +11,7 @@ document.head.appendChild(script);
 // ─── State ────────────────────────────────────
 let state = {
   file: null,
+  audioFile: null,
   rawData: null,
   analysis: null,
   deltas: null,
@@ -29,16 +30,27 @@ const removeFile = $('removeFile');
 const analyzeBtn = $('analyzeBtn');
 const resultsSection = $('resultsSection');
 const promptSection = $('promptSection');
+const testSection = $('testSection');
 const historySection = $('historySection');
 const loadingOverlay = $('loadingOverlay');
 const toast = $('toast');
 const engineModeSelect = $('engineMode');
 
+// Audio References
+const audioDropzone = $('audioDropzone');
+const audioInput = $('audioInput');
+const audioFileInfo = $('audioFileInfo');
+const audioFileName = $('audioFileName');
+const runTestBtn = $('runTestBtn');
+const testResults = $('testResults');
+const testTranscript = $('testTranscript');
+const testAudit = $('testAudit');
+
 // ─── Event Listeners ──────────────────────────
 engineModeSelect.addEventListener('change', (e) => {
   state.engineMode = e.target.value;
   if (state.engineMode === 'vertex') {
-    showToast('🚀 Backend Engine selected (Requires Vertex AI setup)');
+    showToast('🚀 Backend Engine selected (Cloud ID not required)');
   }
 });
 
@@ -89,6 +101,25 @@ removeFile.addEventListener('click', (e) => {
   fileInfo.style.display = 'none';
   analyzeBtn.disabled = true;
 });
+
+// ─── Audio Upload Handlers ────────────────────
+audioDropzone.addEventListener('click', () => audioInput.click());
+audioInput.addEventListener('change', e => { if (e.target.files[0]) handleAudioFile(e.target.files[0]); });
+audioDropzone.addEventListener('dragover', e => { e.preventDefault(); audioDropzone.classList.add('drag-over'); });
+audioDropzone.addEventListener('dragleave', () => audioDropzone.classList.remove('drag-over'));
+audioDropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  audioDropzone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleAudioFile(e.dataTransfer.files[0]);
+});
+
+function handleAudioFile(file) {
+  state.audioFile = file;
+  audioFileName.textContent = file.name;
+  audioFileInfo.style.display = 'flex';
+  runTestBtn.disabled = false;
+  showToast('🎵 Audio file ready for test');
+}
 
 // ─── Analysis Pipeline ────────────────────────
 analyzeBtn.addEventListener('click', async () => {
@@ -180,11 +211,18 @@ async function runLocalAnalysis() {
 }
 
 async function generatePromptViaBackend(analysis, deltas, currentPrompt) {
-  // Use a minimal payload for just the prompt generation if file was already parsed locally
-  // We can reuse the /api/analyze but without the file_content if we modify the backend
-  // For now, we'll just use the template fallback in local mode if frontend AI fails
-  // or we could send a small dummy file. Let's keep it simple for now.
-  throw new Error('Backend generation not implemented for local mode');
+  // Use the backend to get the prompt if frontend AI fails
+  const response = await fetch('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      file_content: '', // No file needed if we just want a prompt rethink? 
+      // Actually /api/analyze expects file_content. 
+      // This is a fallback so we should probably implement a dedicated prompt endpoint.
+      // For now, let's just use the template.
+    })
+  });
+  throw new Error('Backend generation fallback not implemented');
 }
 
 function finalizeAnalysis() {
@@ -206,9 +244,66 @@ function finalizeAnalysis() {
     
     resultsSection.style.display = 'block';
     promptSection.style.display = 'block';
+    testSection.style.display = 'block';
     historySection.style.display = 'block';
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// ─── Live Test Pipeline ───────────────────────
+runTestBtn.addEventListener('click', async () => {
+  if (!state.audioFile || !state.optimizedPrompt) return;
+  showLoading('Running Live Test...');
+  
+  try {
+    // 1. Transcription
+    updateLoader('🎙️ Transcribing audio...');
+    const reader = new FileReader();
+    const audioBase64 = await new Promise(r => {
+      reader.onload = () => r(reader.result.split(',')[1]);
+      reader.readAsDataURL(state.audioFile);
+    });
+    
+    const transResponse = await fetch('https://voicelensG1.pragyaa.ai/vertex/transcript', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: "Transcribe this ICICI Bank sales call precisely. Include agent and customer labels.",
+        audio: audioBase64,
+        mime: 'audio/mpeg'
+      })
+    });
+    
+    if (!transResponse.ok) throw new Error('Transcription failed');
+    const transResult = await transResponse.json();
+    const transcript = transResult.text || transResult.response || "No transcript generated";
+    testTranscript.textContent = transcript;
+    
+    // 2. Evaluation
+    updateLoader('⚖️ Auditing transcript...');
+    const evalResponse = await fetch('https://voicelensG1.pragyaa.ai/vertex/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `${state.optimizedPrompt}\n\n[TRANSCRIPT TO AUDIT]:\n${transcript}`
+      })
+    });
+    
+    if (!evalResponse.ok) throw new Error('Audit failed');
+    const evalResult = await evalResponse.json();
+    const auditText = evalResult.text || evalResult.response || "No audit result";
+    testAudit.textContent = auditText;
+    
+    testResults.style.display = 'grid';
+    testResults.scrollIntoView({ behavior: 'smooth' });
+    hideLoading();
+    showToast('✅ Live Test Complete');
+    
+  } catch (err) {
+    hideLoading();
+    showToast('❌ Test Error: ' + err.message);
+    console.error(err);
+  }
+});
 
 // ─── Excel Reader ─────────────────────────────
 async function readExcel(file) {

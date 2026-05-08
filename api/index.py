@@ -49,23 +49,19 @@ def analyze():
         # Step 4: Compare
         coverage = compare_prompt_with_data(current_prompt, deltas)
         
-        # Step 5: Evolve Prompt (if requested and available)
+        # Step 5: Evolve Prompt (if requested)
         optimized_prompt = None
-        vertex_status = "Not available (Library missing)"
+        vertex_status = "Using Internal Company API (Cloud ID not required)"
         
-        if VERTEX_AVAILABLE:
-            project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-            if not project_id:
-                vertex_status = "Available but GOOGLE_CLOUD_PROJECT not set"
-            else:
-                vertex_status = "Available and ready"
-                if generate_prompt:
-                    try:
-                        # Call evolution logic from the automation script
-                        from openclaw_audit_automation import evolve_prompt_vertex
-                        optimized_prompt = evolve_prompt_vertex(analysis, deltas, current_prompt, "/tmp")
-                    except Exception as ai_err:
-                        vertex_status = f"Vertex AI Error: {str(ai_err)}"
+        if generate_prompt:
+            try:
+                # Call evolution logic from the automation script
+                from openclaw_audit_automation import evolve_prompt_vertex
+                optimized_prompt = evolve_prompt_vertex(analysis, deltas, current_prompt, "/tmp")
+                if not optimized_prompt:
+                    vertex_status = "API returned empty response or failed"
+            except Exception as ai_err:
+                vertex_status = f"API Error: {str(ai_err)}"
 
         return jsonify({
             "status": "success",

@@ -135,6 +135,47 @@
       </div>
     </section>
 
+    <!-- Step 4: Live Test (hidden initially) -->
+    <section class="card test-card" id="testSection" style="display:none">
+      <div class="card-header">
+        <div class="step-badge">STEP 4</div>
+        <h2>Live Test with Audio</h2>
+        <p>Verify the new prompt by transcribing and auditing a sample call</p>
+      </div>
+
+      <div class="test-grid">
+        <div class="test-upload">
+          <label class="input-label">Upload Sample Call (.mp3)</label>
+          <div class="audio-dropzone" id="audioDropzone">
+            <div class="dropzone-icon">🎙️</div>
+            <p>Drag & drop audio here</p>
+            <input type="file" id="audioInput" accept=".mp3" hidden>
+          </div>
+          <div id="audioFileInfo" class="file-chip" style="display:none; margin-top: 12px;">
+            <span class="file-icon">🎵</span>
+            <span id="audioFileName"></span>
+          </div>
+        </div>
+        
+        <div class="test-actions">
+          <button class="btn-secondary" id="runTestBtn" disabled>
+            <span class="btn-icon">▶️</span> Run Live Audit
+          </button>
+        </div>
+      </div>
+
+      <div id="testResults" class="test-results" style="display:none">
+        <div class="test-col">
+          <h3>Generated Transcript</h3>
+          <div id="testTranscript" class="transcript-box"></div>
+        </div>
+        <div class="test-col">
+          <h3>AI Audit Result</h3>
+          <div id="testAudit" class="audit-box"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- Evolution History -->
     <section class="card history-card" id="historySection" style="display:none">
       <div class="card-header">
