@@ -205,7 +205,7 @@ async function runLocalAnalysis() {
       } catch (backendError) {
         console.error('Backend fallback failed:', backendError);
         showToast('❌ AI Optimization failed: ' + backendError.message);
-        state.optimizedPrompt = buildTemplatePrompt(state.analysis, state.deltas, currentPrompt);
+        state.optimizedPrompt = `/* ⚠️ AI OPTIMIZATION FAILED */\n/* REASON: ${backendError.message} */\n/* FALLING BACK TO TEMPLATE */\n\n` + buildTemplatePrompt(state.analysis, state.deltas, currentPrompt);
         state.promptSource = 'template';
       }
     }

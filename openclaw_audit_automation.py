@@ -372,10 +372,18 @@ OUTPUT ONLY THE PROMPT.
                 # Extract text from various possible response formats
                 text = ""
                 if isinstance(result, dict):
-                    text = result.get('text') or result.get('response') or result.get('content') or ""
+                    # Handle multiple possible response shapes from company API
+                    text = (result.get('text') or 
+                            result.get('response') or 
+                            result.get('content') or 
+                            result.get('generated_text') or 
+                            result.get('result') or 
+                            result.get('data') or "")
+                    
                     if not text and 'candidates' in result:
                         try:
-                            text = result['candidates'][0]['content']['parts'][0]['text']
+                            cand = result['candidates'][0]
+                            text = cand.get('content', {}).get('parts', [{}])[0].get('text', '') or cand.get('output', '')
                         except: pass
                 elif isinstance(result, str):
                     text = result
@@ -384,9 +392,9 @@ OUTPUT ONLY THE PROMPT.
                     print(f"  ✓ Prompt evolved successfully (Attempt {retries + 1})")
                     return text.strip()
                 else:
-                    raise ValueError(f"Could not find prompt text in API response: {result}")
+                    raise ValueError(f"Could not find prompt text in API response keys. Response: {str(result)[:200]}...")
             else:
-                raise ValueError(f"API Error ({response.status_code}): {response.text}")
+                raise ValueError(f"API Error ({response.status_code}): {response.text[:200]}")
                 
         except Exception as e:
             retries += 1
@@ -397,7 +405,7 @@ OUTPUT ONLY THE PROMPT.
                 time.sleep(wait_time)
             else:
                 print("  ❌ API evolution failed after maximum retries.")
-                return ""
+                raise e
     return ""
 
 

@@ -28,6 +28,19 @@ except ImportError:
 
 app = Flask(__name__)
 
+def preprocess_df(df):
+    """Normalize status columns for analysis."""
+    ai_col = next((c for c in df.columns if 'Call Status AI' in str(c)), None)
+    ver_col = next((c for c in df.columns if 'Call Status Verifier' in str(c)), None)
+    
+    if not ai_col or not ver_col:
+        raise ValueError(f"Missing status columns. Found: {list(df.columns)}")
+    
+    df['ai_norm'] = df[ai_col].astype(str).str.strip().str.lower()
+    df['ver_norm'] = df[ver_col].astype(str).str.strip().str.lower()
+    df['is_match'] = df['ai_norm'] == df['ver_norm']
+    return df
+
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
     try:
@@ -42,6 +55,9 @@ def analyze():
         # Decode Excel file
         file_bytes = base64.b64decode(file_content_b64)
         df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=0)
+        
+        # Preprocess / Normalize
+        df = preprocess_df(df)
         
         # Step 2: Analyze
         analysis = analyze_root_causes(df)
