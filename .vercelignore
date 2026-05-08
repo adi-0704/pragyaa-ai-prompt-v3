@@ -1,0 +1,12 @@
+api/
+requirements.txt
+*.py
+scratch/
+finmech_project/
+*.md
+*.txt
+*.joblib
+*.json.bak
+*.xlsx
+*.mp3
+zip_contents.txt
