@@ -31,24 +31,14 @@ def analyze():
         data = request.json
         file_content_b64 = data.get('file_content')
         current_prompt = data.get('current_prompt', '')
+        generate_prompt = data.get('generate_prompt', False)
         
         if not file_content_b64:
             return jsonify({"error": "No file content provided"}), 400
             
         # Decode Excel file
         file_bytes = base64.b64decode(file_content_b64)
-        df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=0) # Simple ingestion
-        
-        # Basic normalization (replicating ingest_excel logic)
-        ai_col = next((c for c in df.columns if 'Call Status AI' in str(c)), None)
-        ver_col = next((c for c in df.columns if 'Call Status Verifier' in str(c)), None)
-        
-        if not ai_col or not ver_col:
-            return jsonify({"error": "Missing status columns in Excel"}), 400
-            
-        df['ai_norm'] = df[ai_col].astype(str).str.strip().str.lower()
-        df['ver_norm'] = df[ver_col].astype(str).str.strip().str.lower()
-        df['is_match'] = df['ai_norm'] == df['ver_norm']
+        df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=0)
         
         # Step 2: Analyze
         analysis = analyze_root_causes(df)
@@ -59,12 +49,32 @@ def analyze():
         # Step 4: Compare
         coverage = compare_prompt_with_data(current_prompt, deltas)
         
+        # Step 5: Evolve Prompt (if requested and available)
+        optimized_prompt = None
+        vertex_status = "Not available (Library missing)"
+        
+        if VERTEX_AVAILABLE:
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+            if not project_id:
+                vertex_status = "Available but GOOGLE_CLOUD_PROJECT not set"
+            else:
+                vertex_status = "Available and ready"
+                if generate_prompt:
+                    try:
+                        # Call evolution logic from the automation script
+                        from openclaw_audit_automation import evolve_prompt_vertex
+                        optimized_prompt = evolve_prompt_vertex(analysis, deltas, current_prompt, "/tmp")
+                    except Exception as ai_err:
+                        vertex_status = f"Vertex AI Error: {str(ai_err)}"
+
         return jsonify({
             "status": "success",
             "analysis": analysis,
             "deltas": deltas,
             "coverage": coverage,
-            "vertex_available": VERTEX_AVAILABLE
+            "vertex_available": VERTEX_AVAILABLE,
+            "vertex_status": vertex_status,
+            "optimized_prompt": optimized_prompt
         })
         
     except Exception as e:
