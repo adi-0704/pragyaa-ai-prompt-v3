@@ -145,6 +145,16 @@ analyzeBtn.onclick = async () => {
   }
 };
 
+async function safeJson(response) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error('Failed to parse JSON:', text.substring(0, 500));
+    throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+  }
+}
+
 async function runBackendAnalysis() {
   const reader = new FileReader();
   const fileBase64 = await new Promise((resolve) => {
@@ -162,9 +172,9 @@ async function runBackendAnalysis() {
     })
   });
 
-  const result = await response.json();
+  const result = await safeJson(response);
   if (!response.ok) {
-    throw new Error(result.error || 'Backend analysis failed');
+    throw new Error(result.error || `Backend error (${response.status})`);
   }
 
   state.analysis = result.analysis;
@@ -230,8 +240,8 @@ async function generatePromptViaBackend(analysis, deltas, currentPrompt) {
     })
   });
 
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Backend fallback failed');
+  const result = await safeJson(response);
+  if (!response.ok) throw new Error(result.error || `Backend error (${response.status})`);
   if (!result.optimized_prompt) throw new Error(result.vertex_status || 'Empty response');
   
   return result.optimized_prompt;
