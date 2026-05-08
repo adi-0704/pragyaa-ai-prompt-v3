@@ -54,7 +54,7 @@ def analyze():
         
         # Step 5: Evolve Prompt (if requested)
         optimized_prompt = None
-        vertex_status = "Using Internal Company API (Cloud ID not required)"
+        vertex_status = "Using Internal Company API"
         
         if generate_prompt:
             try:
@@ -62,13 +62,30 @@ def analyze():
                 from openclaw_audit_automation import evolve_prompt_vertex
                 optimized_prompt = evolve_prompt_vertex(analysis, deltas, current_prompt, "/tmp")
                 if not optimized_prompt:
-                    vertex_status = "API returned empty response or failed"
+                    vertex_status = "API returned empty response"
             except Exception as ai_err:
                 vertex_status = f"API Error: {str(ai_err)}"
 
+        # Convert snake_case to camelCase for frontend consistency
+        formatted_analysis = {
+            "summary": {
+                "total": analysis['summary']['total_cases'],
+                "agreementRate": analysis['summary']['agreement_rate'],
+                "aiApprovalRate": analysis['summary']['ai_approval_rate'],
+                "verApprovalRate": analysis['summary']['verifier_approval_rate'],
+                "falseReworkCount": analysis['summary']['false_rework_count'],
+                "falseApproveCount": analysis['summary']['false_approve_count'],
+                "gap": analysis['summary']['gap']
+            },
+            "paramFailures": analysis['false_rework']['param_failures'],
+            "consentPatterns": analysis['false_rework']['patterns'].get('consent', {}),
+            "chargesPatterns": analysis['false_rework']['patterns'].get('charges', {}),
+            "faReasons": analysis['false_approve']['reasons']
+        }
+
         return jsonify({
             "status": "success",
-            "analysis": analysis,
+            "analysis": formatted_analysis,
             "deltas": deltas,
             "coverage": coverage,
             "vertex_available": INTERNAL_API_AVAILABLE,

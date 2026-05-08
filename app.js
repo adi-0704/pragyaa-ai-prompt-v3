@@ -197,11 +197,14 @@ async function runLocalAnalysis() {
       state.promptSource = 'ai';
     } catch (apiError) {
       console.error('Frontend Vertex AI failed, trying backend fallback...', apiError);
+      showToast('⚠️ Direct AI call failed, trying backend...');
       try {
         updateLoader('🤖 Trying Backend Vertex AI...');
         state.optimizedPrompt = await generatePromptViaBackend(state.analysis, state.deltas, currentPrompt);
         state.promptSource = 'ai';
       } catch (backendError) {
+        console.error('Backend fallback failed:', backendError);
+        showToast('❌ AI Optimization failed: ' + backendError.message);
         state.optimizedPrompt = buildTemplatePrompt(state.analysis, state.deltas, currentPrompt);
         state.promptSource = 'template';
       }
@@ -523,9 +526,16 @@ Write the prompt in a clear, structured format with numbered sections. Include t
       
       const result = await response.json();
       // Extract text from Vertex AI response — handle multiple possible response shapes
-      let text = result.text || result.response || result.content || result.candidates?.[0]?.content?.parts?.[0]?.text || (typeof result === 'string' ? result : null);
-      if (typeof text === 'object') {
+      let text = result.text || result.response || result.content || result.generated_text || result.result || result.data ||
+                 result.candidates?.[0]?.content?.parts?.[0]?.text || 
+                 (typeof result === 'string' ? result : null);
+      
+      if (typeof text === 'object' && text !== null) {
           text = JSON.stringify(text);
+      }
+      
+      if (!text && result.candidates?.[0]?.output) {
+          text = result.candidates[0].output;
       }
       
       if (!text) throw new Error('Vertex AI returned empty response');
