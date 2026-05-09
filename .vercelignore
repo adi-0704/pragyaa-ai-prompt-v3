@@ -1,9 +1,12 @@
 scratch/
 finmech_project/
-*.md
-*.txt
+finmech_details.zip
+CC_DC_audios.zip
+CC_audios/
+DC_audios/
 *.joblib
-*.json.bak
 *.xlsx
 *.mp3
-zip_contents.txt
+*.zip
+frontend/.git
+frontend/
