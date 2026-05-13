@@ -4,9 +4,15 @@ finmech_details.zip
 CC_DC_audios.zip
 CC_audios/
 DC_audios/
+Insta_12may_review/
+variance_cc_transcripts_8May/
+pragyaa-fresh/
 *.joblib
 *.xlsx
+*.xlsm
 *.mp3
 *.zip
+*.csv
 frontend/.git
 frontend/
+__pycache__/
