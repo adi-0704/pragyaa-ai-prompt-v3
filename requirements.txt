@@ -2,6 +2,3 @@ flask
 pandas
 openpyxl
 requests
-io
-base64
-json
