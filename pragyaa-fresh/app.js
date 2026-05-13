@@ -36,15 +36,12 @@ const loadingOverlay = $('loadingOverlay');
 const toast = $('toast');
 const engineModeSelect = $('engineMode');
 
-// Audio References
-const audioDropzone = $('audioDropzone');
-const audioInput = $('audioInput');
-const audioFileInfo = $('audioFileInfo');
-const audioFileName = $('audioFileName');
+// Audio References (Replaced by Transcript Test)
 const runTestBtn = $('runTestBtn');
 const testResults = $('testResults');
-const testTranscript = $('testTranscript');
-const testAudit = $('testAudit');
+const testTranscriptInput = $('testTranscriptInput');
+const oldAuditResult = $('oldAuditResult');
+const newAuditResult = $('newAuditResult');
 
 // ─── Event Listeners ──────────────────────────
 engineModeSelect.addEventListener('change', (e) => {
@@ -106,24 +103,7 @@ removeFile.onclick = (e) => {
   analyzeBtn.disabled = true;
 };
 
-// ─── Audio Upload Handlers ────────────────────
-audioDropzone.onclick = () => audioInput.click();
-audioInput.onchange = e => { if (e.target.files[0]) handleAudioFile(e.target.files[0]); };
-audioDropzone.ondragover = e => { e.preventDefault(); audioDropzone.classList.add('drag-over'); };
-audioDropzone.ondragleave = () => audioDropzone.classList.remove('drag-over');
-audioDropzone.ondrop = e => {
-  e.preventDefault();
-  audioDropzone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) handleAudioFile(e.dataTransfer.files[0]);
-};
-
-function handleAudioFile(file) {
-  state.audioFile = file;
-  audioFileName.textContent = file.name;
-  audioFileInfo.style.display = 'flex';
-  runTestBtn.disabled = false;
-  showToast('🎵 Audio file ready for test');
-}
+// Audio handlers removed — text transcript pasting is now used directly.
 
 // ─── Analysis Pipeline ────────────────────────
 analyzeBtn.onclick = async () => {
@@ -251,20 +231,18 @@ function finalizeAnalysis() {
     state.history.push({
       timestamp: new Date().toISOString(),
       file: state.file.name,
-      cases: state.analysis.summary.total_cases || state.analysis.summary.total,
-      agreement: state.analysis.summary.agreement_rate || state.analysis.summary.agreementRate,
-      falseReworks: state.analysis.summary.false_rework_count || state.analysis.summary.falseReworkCount,
+      cases: state.analysis.summary.total,
+      agreement: state.analysis.summary.agreementRate,
+      falseReworks: state.analysis.summary.falseReworkCount,
       source: state.promptSource,
     });
 
     renderResults();
     renderPrompt();
-    renderChanges();
-    renderReport();
     renderHistory();
     hideLoading();
     
-    showToast(`✅ Analysis complete — 🤖 ${state.analysis.summary.process || 'AI'} prompt ready`);
+    showToast(`✅ Analysis complete — 🤖 AI prompt ready`);
     
     resultsSection.style.display = 'block';
     promptSection.style.display = 'block';
@@ -275,51 +253,62 @@ function finalizeAnalysis() {
 
 // ─── Live Test Pipeline ───────────────────────
 runTestBtn.onclick = async () => {
-  if (!state.audioFile || !state.optimizedPrompt) return;
-  showLoading('Running Live Test...');
+  const transcriptText = testTranscriptInput.value.trim();
+  const currentPrompt = $('currentPrompt').value.trim() || 'You are an auditor. Audit the call.';
+  
+  if (!transcriptText || !state.optimizedPrompt) {
+    showToast('⚠️ Please generate an optimized prompt and paste a transcript first.');
+    return;
+  }
+  
+  showLoading('Running Variance Test...');
   
   try {
-    updateLoader('🎙️ Transcribing audio...');
-    const reader = new FileReader();
-    const audioBase64 = await new Promise(r => {
-      reader.onload = () => r(reader.result.split(',')[1]);
-      reader.readAsDataURL(state.audioFile);
-    });
-    
-    const transResponse = await fetch('/api/vertex', {
+    // Helper to format AI response
+    const formatResponse = (text) => {
+      let cleaned = text.replace(/```json\s*/, '').replace(/```\s*$/, '').trim();
+      try {
+        const parsed = JSON.parse(cleaned);
+        return `<pre class="json-output">${JSON.stringify(parsed, null, 2)}</pre>`;
+      } catch (e) {
+        return `<pre class="json-output">${cleaned}</pre>`;
+      }
+    };
+
+    updateLoader('⚖️ Auditing with OLD Prompt...');
+    const oldEvalResponse = await fetch('/api/vertex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: "Transcribe this ICICI Bank sales call precisely. Include agent and customer labels.",
-        audio: audioBase64,
-        mime: 'audio/mpeg'
-      })
-    });
-    
-    if (!transResponse.ok) throw new Error('Transcription failed');
-    const transResult = await transResponse.json();
-    const transcript = transResult.text || transResult.response || "No transcript generated";
-    testTranscript.textContent = transcript;
-    
-    updateLoader('⚖️ Auditing transcript...');
-    const evalResponse = await fetch('/api/vertex', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: `${state.optimizedPrompt}\n\n[TRANSCRIPT TO AUDIT]:\n${transcript}`,
+        prompt: `${currentPrompt}\n\n[TRANSCRIPT TO AUDIT]:\n${transcriptText}`,
         model: "gemini-2.5-flash-lite"
       })
     });
     
-    if (!evalResponse.ok) throw new Error('Audit failed');
-    const evalResult = await evalResponse.json();
-    const auditText = evalResult.text || evalResult.response || "No audit result";
-    testAudit.textContent = auditText;
+    if (!oldEvalResponse.ok) throw new Error('Old Audit failed');
+    const oldEvalResult = await oldEvalResponse.json();
+    const oldRawText = oldEvalResult.text || oldEvalResult.response || JSON.stringify(oldEvalResult);
+    oldAuditResult.innerHTML = formatResponse(oldRawText);
+
+    updateLoader('⚖️ Auditing with NEW Optimized Prompt...');
+    const newEvalResponse = await fetch('/api/vertex', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `${state.optimizedPrompt}\n\n[TRANSCRIPT TO AUDIT]:\n${transcriptText}`,
+        model: "gemini-2.5-flash-lite"
+      })
+    });
+    
+    if (!newEvalResponse.ok) throw new Error('New Audit failed');
+    const newEvalResult = await newEvalResponse.json();
+    const newRawText = newEvalResult.text || newEvalResult.response || JSON.stringify(newEvalResult);
+    newAuditResult.innerHTML = formatResponse(newRawText);
     
     testResults.style.display = 'grid';
     testResults.scrollIntoView({ behavior: 'smooth' });
     hideLoading();
-    showToast('✅ Live Test Complete');
+    showToast('✅ Variance Test Complete');
     
   } catch (err) {
     hideLoading();
@@ -497,116 +486,27 @@ function buildTemplatePrompt(analysis, deltas, currentPrompt) {
 
 function renderResults() {
   const s = state.analysis.summary;
-  const gap = s.gap || Math.round(((s.verApprovalRate || s.verifier_approval_rate) - (s.aiApprovalRate || s.ai_approval_rate)) * 10) / 10;
-  
-  // Show process badge
-  const processName = s.process || 'N/A';
-  resultsSection.querySelector('p').innerHTML = `Process Detected: <strong style="color: var(--accent-bright)">${processName}</strong>`;
-
+  const gap = Math.round((s.verApprovalRate - s.aiApprovalRate) * 10) / 10;
   $('statsGrid').innerHTML = [
-    { value: s.total_cases || s.total, label: 'Total Cases', cls: '' },
-    { value: (s.agreement_rate || s.agreementRate) + '%', label: 'Agreement', cls: (s.agreement_rate || s.agreementRate) > 70 ? 'success' : 'danger' },
-    { value: (s.ai_approval_rate || s.aiApprovalRate) + '%', label: 'AI Approval', cls: '' },
-    { value: (s.verifier_approval_rate || s.verApprovalRate) + '%', label: 'Verifier Approval', cls: 'success' },
-    { value: s.false_rework_count || s.falseReworkCount, label: 'False Reworks', cls: 'danger' },
-    { value: gap + '%', label: 'Approval Gap', cls: Math.abs(gap) > 5 ? 'danger' : 'success' },
+    { value: s.total, label: 'Total Cases', cls: '' },
+    { value: s.agreementRate + '%', label: 'Agreement', cls: s.agreementRate > 70 ? 'success' : 'danger' },
+    { value: s.aiApprovalRate + '%', label: 'AI Approval', cls: '' },
+    { value: s.verApprovalRate + '%', label: 'Verifier Approval', cls: 'success' },
+    { value: s.falseReworkCount, label: 'False Reworks', cls: 'danger' },
+    { value: gap + '%', label: 'Approval Gap', cls: 'danger' },
   ].map(s => `<div class="stat-card"><div class="stat-value ${s.cls}">${s.value}</div><div class="stat-label">${s.label}</div></div>`).join('');
-
   const sorted = Object.entries(state.analysis.paramFailures).sort((a, b) => b[1].pct - a[1].pct);
   $('failureBars').innerHTML = sorted.map(([param, info]) => {
-    if (info.pct === 0) return '';
-    const cls = info.pct > 40 ? 'critical' : info.pct > 15 ? 'high' : 'medium';
-    return `<div class="failure-row">
-      <div class="failure-label" title="${param}">${param.replace(' Met', '').replace(' Score', '')}</div>
-      <div class="failure-bar-bg"><div class="failure-bar ${cls}" style="width: ${info.pct}%"></div></div>
-      <div class="failure-pct">${info.pct}%</div>
-    </div>`;
+    const cls = info.pct > 50 ? 'critical' : info.pct > 20 ? 'high' : 'medium';
+    return `<div class="failure-row"><div class="failure-label">${param.replace(' Met', '')}</div><div class="failure-bar-bg"><div class="failure-bar ${cls}" style="width: ${info.pct}%"></div></div><div class="failure-pct">${info.pct}%</div></div>`;
   }).join('');
-
-  // Handle patterns grid dynamically
-  let patternsHtml = '';
-  if (state.analysis.consentPatterns && Object.keys(state.analysis.consentPatterns).length > 0) {
-    patternsHtml += `<div class="pattern-box"><h4>🔒 Consent Patterns</h4>${Object.entries(state.analysis.consentPatterns).map(([k, v]) => `<div class="pattern-item"><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;
-  }
-  if (state.analysis.chargesPatterns && Object.keys(state.analysis.chargesPatterns).length > 0) {
-    patternsHtml += `<div class="pattern-box"><h4>💰 Charges Patterns</h4>${Object.entries(state.analysis.chargesPatterns).map(([k, v]) => `<div class="pattern-item"><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;
-  }
-  
-  if (!patternsHtml && state.analysis.faReasons && state.analysis.faReasons.length > 0) {
-    patternsHtml = `<div class="pattern-box" style="grid-column: span 2"><h4>🚩 Top Verifier Rework Reasons (False Approvals)</h4>
-      <div style="font-size: 11px; max-height: 200px; overflow-y: auto;">
-        ${state.analysis.faReasons.slice(0, 10).map(r => `<div class="pattern-item" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 8px 0;">${r}</div>`).join('')}
-      </div>
-    </div>`;
-  }
-
-  $('patternsGrid').innerHTML = patternsHtml || `<p style="grid-column: span 2; text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px;">No specific failure patterns identified in this batch.</p>`;
+  $('patternsGrid').innerHTML = `<div class="pattern-box"><h4>🔒 Consent Patterns</h4>${Object.entries(state.analysis.consentPatterns).map(([k, v]) => `<div class="pattern-item"><span>${k}</span><span>${v}</span></div>`).join('')}</div><div class="pattern-box"><h4>💰 Charges Patterns</h4>${Object.entries(state.analysis.chargesPatterns).map(([k, v]) => `<div class="pattern-item"><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;
 }
 
 function renderPrompt() {
-  const badge = `<span class="ai-badge">🤖 ${state.analysis.summary.process || 'Vertex AI'}</span>`;
+  const badge = '<span class="ai-badge">🤖 Vertex AI</span>';
   $('promptSection').querySelector('h2').innerHTML = 'Optimized Prompt ' + badge;
   $('optimizedPrompt').textContent = state.optimizedPrompt;
-  
-  // Default to optimized view
-  switchPromptView('optimized');
-}
-
-function renderChanges() {
-  if (!state.deltas) return;
-  $('changesView').innerHTML = state.deltas.map(d => `
-    <div class="change-item ${d.severity.toLowerCase()}">
-      <div class="change-title">${d.param}</div>
-      <div class="change-desc"><strong>Root Cause:</strong> ${d.rootCause}</div>
-      <div class="change-desc"><strong>Fix Implemented:</strong> ${d.fix}</div>
-      <div class="change-status ${d.pct > 30 ? 'added' : 'verify'}">${d.severity} VARIANCE (${d.pct}%)</div>
-    </div>
-  `).join('');
-}
-
-function renderReport() {
-  const s = state.analysis.summary;
-  const process = s.process || 'Standard';
-  $('reportView').innerHTML = `
-    <h3>Variance Analysis Report — ${process}</h3>
-    <p>This report summarizes the discrepancies found between AI auditing and Human Verifier (Finmech) for <strong>${s.total_cases}</strong> cases.</p>
-    
-    <table>
-      <thead>
-        <tr><th>Metric</th><th>AI</th><th>Verifier</th><th>Gap</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Approval Rate</td><td>${s.ai_approval_rate}%</td><td>${s.verifier_approval_rate}%</td><td>${s.gap}%</td></tr>
-        <tr><td>False Reworks</td><td>${s.false_rework_count}</td><td>-</td><td>-</td></tr>
-        <tr><td>False Approvals</td><td>${s.false_approve_count}</td><td>-</td><td>-</td></tr>
-        <tr><td>Agreement</td><td colspan="3">${s.agreement_rate}%</td></tr>
-      </tbody>
-    </table>
-
-    <h3>Top Discrepancies to Fix</h3>
-    <ul>
-      ${state.deltas.slice(0, 5).map(d => `<li><strong>${d.param}:</strong> AI is ${d.pct}% stricter than the verifier.</li>`).join('')}
-    </ul>
-    
-    <p style="margin-top: 20px; font-style: italic; font-size: 11px;">Note: The optimized prompt addresses these gaps by adjusting thresholds for ${process} specific parameters.</p>
-  `;
-}
-
-// ─── Tab Toggles ──────────────────────────────
-document.querySelectorAll('.toggle-btn').forEach(btn => {
-  btn.onclick = () => {
-    const view = btn.dataset.view;
-    switchPromptView(view);
-  };
-});
-
-function switchPromptView(view) {
-  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector(`[data-view="${view}"]`).classList.add('active');
-  
-  $('optimizedPrompt').style.display = view === 'optimized' ? 'block' : 'none';
-  $('changesView').style.display = view === 'changes' ? 'block' : 'none';
-  $('reportView').style.display = view === 'report' ? 'block' : 'none';
 }
 
 function renderHistory() {

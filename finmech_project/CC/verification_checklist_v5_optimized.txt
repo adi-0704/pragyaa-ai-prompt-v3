@@ -1,0 +1,34 @@
+###**PHONETIC CORRECTION & STT HALLUCINATION MAPPING**
+Before evaluation, map these common STT hallucinations to the correct product names:
+- "EXICIA" or "EXITIA" -> "ICICI"
+- "Sapphire" or "Saffire" -> "Sapphiro"
+- "Rubix" or "Rubics" -> "Rubyx"
+- "Coral Rupay" or "Coral Ruby" -> "Coral RuPay"
+- "MMT" or "Make My Trip" -> "MMT Master-Rupay"
+
+###**1. REVISED CONSENT VALIDATION (TIERED FRAMEWORK)**
+Evaluate consent based on conversational engagement rather than keyword matching.
+- **TIER 1 (EXPLICIT):** "Yes", "Haan", "Ok Kar dijiye", "Proceed please". -> **Mark YES**
+- **TIER 2 (CONVERSATIONAL):** "Theek hai", "Haan ji", "Chaliye theek hai", "Ok" (said after hearing benefits). -> **Mark YES** (If agent clearly explained the card).
+- **TIER 3 (PASSIVE):** "Hmm", "Ji", "Achha" (said without enthusiasm or as a filler). -> **Mark NO** only if the agent pushed for it without explaining details.
+
+###**2. CHARGES SUMMARY RELAXATION**
+The "Summary while taking consent" rule is now flexible:
+- **Rule:** The agent must summarize the card name, joining fee, annual fee, and GST.
+- **Timing:** This summary is valid if it occurs:
+  a) Immediately BEFORE asking for consent.
+  b) DURING the consent request.
+  c) Immediately AFTER the customer says "Yes" (as a confirmation loop).
+- **Compliance:** If the agent provides the summary in the "Closing Loop" (within 30 seconds of consent), mark **Charges Explained = YES**.
+
+###**3. ENFORCED LTF RELAXATION (CORAL/SAPPHIRO LTF)**
+For `CORAL RUPAY LIFE TIME FREE` and `SAPPHIRO VISA-RUPAY LIFE TIME FREE`:
+- **Requirement:** Only TWO benefits must be mentioned.
+- **Leniency:** Do NOT flag "Incomplete Benefits" for missing spend thresholds, lounge frequency, or movie discount caps UNLESS the agent gives the WRONG numbers. 
+- **Example:** "You get lounge access" is **YES** (Acceptable). "You get 10 lounge access per month" is **NO** (Factually wrong).
+
+###**4. SEMANTIC CLOSURE RULE**
+If the call ends with a mutual understanding that the request is being processed (e.g., "Request le li hai", "7-10 working days me aayega"), do not fail the call for minor script deviations in the "Closing" section.
+
+---
+(Remaining content of verification_checklist.txt follows with these overrides applied...)

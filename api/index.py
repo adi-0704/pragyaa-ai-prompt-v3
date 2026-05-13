@@ -1,7 +1,6 @@
 """
-Pragyaa.AI — Serverless Backend v1.0.9-routing-fix
-Self-contained: No imports from root scripts.
-Designed for Vercel Python Serverless Functions.
+Pragyaa.AI — Serverless Backend v1.1.0 (Multi-Process Support)
+Supports Amazon(NCA), Insta(NCA), and CC/DC Upgrade processes.
 """
 
 from flask import Flask, request, jsonify
@@ -33,68 +32,116 @@ VERTEX_GENERATE_URL = "https://voicelensG1.pragyaa.ai/vertex/generate"
 VERTEX_TRANSCRIPT_URL = "https://voicelensG1.pragyaa.ai/vertex/transcribe"
 DEFAULT_MODEL = "gemini-2.5-flash-lite"
 
+# ─── Process Configs ──────────────────────────────────────────────────────────
+PROCESS_CONFIGS = {
+    "Amazon(NCA)": {
+        "params": [
+            "Greeting Score", "Self Brand Score", "Call Purpose Score", "Grammar Score", 
+            "Hold Transfer Silence Score", "Active Listen Score", "Engagement Tone Score", 
+            "Product Benefits Score", "Urgency/Objections Rebuttal  Score", "Fees Charges Score", 
+            "First Txn Amazon Score", "Appointment Score", "Referral Code Score", 
+            "Track Application", "VKYC Biometric Score", "Subject to Approval Score", 
+            "Closing Summary Score", "Accurate Disposition", "Junk Lead", 
+            "Complete Information Provided", "Professional Behaviour", "No Disconnection Avoid"
+        ],
+        "fixes": {
+            "Accurate Disposition": "Ensure disposition accurately reflects LEAD vs REJECTED based on final transcript sentiment.",
+            "Greeting Score": "Be stricter on Right Party Verification (RPV) — only pass if customer identity is confirmed.",
+            "Call Purpose Score": "AI is over-approving. Strictly mark as NO if the agent misses the 'Pre-approved Credit Card' context or interest check.",
+            "Referral Code Score": "AI is currently missing mentions. Detect SOL ID (0000) and AIR code mentions even in fast speech.",
+            "Grammar Score": "Stricter markdown for sentence construction and pronunciation errors of 'ICICI Bank'.",
+            "Fees Charges Score": "Ensure ₹499/₹199 + GST is explicitly mentioned; AI is currently under-reporting.",
+            "Closing Summary Score": "Increase detection of professional closing phrases and summary points."
+        }
+    },
+    "Insta(NCA)": {
+        "params": [
+            "Greeting Score", "Self Brand Score", "Call Purpose Score", "Grammar Score", 
+            "Hold Transfer Silence Score", "Active Listen Ack Score", "Engagement Tone Score", 
+            "Product Benefits Score", "Urgency Score", "Login Offer Details Score", 
+            "Customer Basic Information Score", "Link SMS Email Score", "Activate Auto Debit Score", 
+            "Referral Code Score", "OTP Verification Consent Score", 
+            "Success VOC Card Confirmation Score", "Closing Summary Score",
+            "Accurate Disposition", "Junk Lead", "Complete Information Provided", 
+            "Professional Behavior", "No Disconnection Avoid"
+        ],
+        "fixes": {
+            "Greeting Score": "Verify Right Party Verification (RPV) is strictly met before passing.",
+            "Call Purpose Score": "Stricter check for 'Pre-approved' and 'Interest' pitch context.",
+            "Accurate Disposition": "Fix sub-disposition tagging (NOT_INTERESTED vs NOT_ELIGIBLE). Ensure LEAD is only tagged for successful generation.",
+            "Grammar Score": "Markdown for significant grammatical errors or mispronunciations.",
+            "Success VOC Card Confirmation Score": "Be more sensitive to card name and color confirmation mentions."
+        }
+    },
+    "CC/DC Upgrade": {
+        "params": [
+            'Greeting Met', 'Benefits Explained Met', 'Charges Explained Met',
+            'Pitch Modulation', 'Pitch Pace', 'Tone Appropriate Met',
+            'Consent Taken Met', 'Card Variant Met'
+        ],
+        "fixes": {
+            'Consent Taken Met': 'Implement 3-Tier Hindi consent: Tier1 (explicit), Tier2 (contextual), Tier3 (refusal only).',
+            'Charges Explained Met': 'Switch to content-based evaluation (pass if ₹699+GST stated correctly regardless of pace).',
+            'Card Variant Met': 'Add fuzzy mapping: "Coral card"/"Updated Coral" → Coral Debit Card.'
+        }
+    }
+}
+
 # ─── Data Helpers ──────────────────────────────────────────────────────────────
+def detect_process(df):
+    cols = " ".join(df.columns.astype(str))
+    if "Amazon" in cols or "VKYC" in cols or "Biometric" in cols:
+        return "Amazon(NCA)"
+    if "Insta" in cols or "VOC" in cols:
+        return "Insta(NCA)"
+    return "CC/DC Upgrade"
+
 def preprocess_df(df):
     """Find and normalize the AI/Verifier status columns."""
-    ai_col = next((c for c in df.columns if 'Call Status AI' in str(c)), None)
-    ver_col = next((c for c in df.columns if 'Call Status Verifier' in str(c)), None)
+    ai_col  = next((c for c in df.columns if 'AI' in str(c) and ('Status' in str(c) or 'Disposition' in str(c))), None)
+    ver_col = next((c for c in df.columns if ('Verifier' in str(c) or 'Finmech' in str(c)) and ('Status' in str(c) or 'Disposition' in str(c))), None)
+    
     if not ai_col or not ver_col:
-        raise ValueError(f"Missing status columns. Found columns: {list(df.columns)[:10]}")
+        # Fallback if specific headers are missing
+        ai_col = next((c for c in df.columns if 'Call Status AI' in str(c)), df.columns[0])
+        ver_col = next((c for c in df.columns if 'Call Status Verifier' in str(c)), df.columns[1])
+        
     df['ai_norm'] = df[ai_col].astype(str).str.strip().str.lower()
     df['ver_norm'] = df[ver_col].astype(str).str.strip().str.lower()
+    
+    def normalize_val(v):
+        v = str(v).lower()
+        if any(k in v for k in ['rework', 'no', 'incorrect', 'false', '0']): return 'rework'
+        if any(k in v for k in ['approve', 'yes', 'correct', 'true', '1']): return 'approved'
+        return v
+        
+    df['ai_norm'] = df['ai_norm'].apply(normalize_val)
+    df['ver_norm'] = df['ver_norm'].apply(normalize_val)
     df['is_match'] = df['ai_norm'] == df['ver_norm']
     return df, ai_col, ver_col
 
-def analyze_root_causes(df, ai_col, ver_col):
-    """Full discrepancy analysis — same logic as frontend JS but authoritative."""
-    norm = lambda v: str(v or '').strip().lower()
+def analyze_root_causes(df, ai_col, ver_col, process_name):
+    """Full discrepancy analysis with process-specific parameters."""
     total = len(df)
     agree = int((df['ai_norm'] == df['ver_norm']).sum())
 
     false_rework = df[(df['ai_norm'] == 'rework') & (df['ver_norm'] == 'approved')]
     false_approve = df[(df['ai_norm'] == 'approved') & (df['ver_norm'] == 'rework')]
 
-    params = [
-        'Greeting Met', 'Benefits Explained Met', 'Charges Explained Met',
-        'Pitch Modulation', 'Pitch Pace', 'Tone Appropriate Met',
-        'Consent Taken Met', 'Card Variant Met'
-    ]
+    config = PROCESS_CONFIGS.get(process_name, PROCESS_CONFIGS["CC/DC Upgrade"])
+    params = config["params"]
+    
     param_failures = {}
     fr_len = max(len(false_rework), 1)
     for p in params:
         col = next((c for c in df.columns if p in str(c)), None)
         if not col:
             continue
-        fails = int((false_rework[col].astype(str).str.strip().str.lower() == 'no').sum())
+        # Count where AI said 'No/Rework' but verifier said 'Yes/Approved'
+        fails = int((false_rework[col].astype(str).str.strip().str.lower().isin(['no', '0', 'incorrect', 'rework'])).sum())
         param_failures[p] = {'count': fails, 'pct': round(fails / fr_len * 100, 1)}
 
-    # Consent patterns
-    consent_col = next((c for c in df.columns if 'Consent Taken Reasons' in str(c)), None)
-    consent_met_col = next((c for c in df.columns if 'Consent Taken Met' in str(c)), None)
-    consent_fails = false_rework[false_rework[consent_met_col].astype(str).str.strip().str.lower() == 'no'] if consent_met_col else pd.DataFrame()
-    consent_patterns = {'Passive Okay/Haan': 0, 'No Explicit Ask': 0, 'Ji/Hmm Backchannel': 0, 'Premature/Rushed': 0}
-    if consent_col and not consent_fails.empty:
-        for _, row in consent_fails.iterrows():
-            r = norm(row.get(consent_col, ''))
-            if any(k in r for k in ['passive', 'okay', 'haan', 'acknowledgm']): consent_patterns['Passive Okay/Haan'] += 1
-            if any(k in r for k in ['not explicitly', 'did not', 'without']): consent_patterns['No Explicit Ask'] += 1
-            if any(k in r for k in ['ji', 'hmm', 'backchannel']): consent_patterns['Ji/Hmm Backchannel'] += 1
-            if any(k in r for k in ['rushed', 'before']): consent_patterns['Premature/Rushed'] += 1
-
-    # Charges patterns
-    charges_col = next((c for c in df.columns if 'Charges Explained Reasons' in str(c)), None)
-    charges_met_col = next((c for c in df.columns if 'Charges Explained Met' in str(c)), None)
-    charges_fails = false_rework[false_rework[charges_met_col].astype(str).str.strip().str.lower() == 'no'] if charges_met_col else pd.DataFrame()
-    charges_patterns = {'Rushed Delivery': 0, 'Confusing/Unclear': 0, 'Missing GST': 0, 'Wrong Amounts': 0}
-    if charges_col and not charges_fails.empty:
-        for _, row in charges_fails.iterrows():
-            r = norm(row.get(charges_col, ''))
-            if any(k in r for k in ['rushed', 'fast', 'quickly']): charges_patterns['Rushed Delivery'] += 1
-            if any(k in r for k in ['confus', 'unclear', 'not clear']): charges_patterns['Confusing/Unclear'] += 1
-            if 'gst' in r: charges_patterns['Missing GST'] += 1
-            if any(k in r for k in ['incorrect', 'wrong']): charges_patterns['Wrong Amounts'] += 1
-
-    rework_reason_col = next((c for c in df.columns if 'Reason for Rework' in str(c)), None)
+    rework_reason_col = next((c for c in df.columns if 'Reason' in str(c) or 'Finding' in str(c)), None)
     fa_reasons = list(false_approve[rework_reason_col].dropna().astype(str).values) if rework_reason_col else []
 
     ai_approved = int((df['ai_norm'] == 'approved').sum())
@@ -108,49 +155,39 @@ def analyze_root_causes(df, ai_col, ver_col):
             'verifier_approval_rate': round(ver_approved / total * 100, 1),
             'false_rework_count': len(false_rework),
             'false_approve_count': len(false_approve),
-            'gap': round((ver_approved - ai_approved) / total * 100, 1)
+            'gap': round((ver_approved - ai_approved) / total * 100, 1),
+            'process': process_name
         },
         'false_rework': {
             'param_failures': param_failures,
-            'patterns': {'consent': consent_patterns, 'charges': charges_patterns}
+            'patterns': {} # Pattern extraction can be expanded here
         },
         'false_approve': {'reasons': fa_reasons}
     }
 
-def generate_prompt_deltas(analysis):
-    """Build structured fix recommendations from the analysis."""
+def generate_prompt_deltas(analysis, process_name):
+    """Build structured fix recommendations based on process config."""
     pf = analysis['false_rework']['param_failures']
     sorted_params = sorted(pf.items(), key=lambda x: x[1]['pct'], reverse=True)
+    
+    config = PROCESS_CONFIGS.get(process_name, PROCESS_CONFIGS["CC/DC Upgrade"])
+    fixes = config["fixes"]
+    
     deltas = []
     for param, info in sorted_params:
-        if info['pct'] < 5:
+        if info['pct'] < 1: # Lower threshold to capture minor variances
             continue
-        severity = 'CRITICAL' if info['pct'] > 50 else ('HIGH' if info['pct'] > 20 else 'MEDIUM')
-        root_cause, fix = '', ''
-        if param == 'Consent Taken Met':
-            root_cause = 'AI rejects passive Hindi consent ("Okay", "Haan ji", "Theek hai")'
-            fix = 'Implement 3-Tier consent: Tier1 explicit, Tier2 contextual (valid after full pitch), Tier3 refusal only'
-        elif param == 'Charges Explained Met':
-            root_cause = 'AI penalizes delivery speed instead of factual accuracy'
-            fix = 'Switch to content-based evaluation — pass if ₹699+GST stated correctly regardless of pace'
-        elif param == 'Pitch Pace':
-            root_cause = 'AI pace threshold stricter than human verifier tolerance'
-            fix = 'Only fail if customer explicitly asks to repeat or slow down'
-        elif param == 'Benefits Explained Met':
-            root_cause = 'AI requires too many benefits to be mentioned'
-            fix = 'Pass if agent mentions ≥2 core benefits accurately'
-        elif param == 'Card Variant Met':
-            root_cause = 'AI fails on informal card name variations'
-            fix = 'Add fuzzy mapping: "Coral card"/"Updated Coral" → Coral Debit Card'
-        else:
-            root_cause = f'AI too strict on {param}'
-            fix = f'Align {param} threshold with human verifier standards'
+        severity = 'CRITICAL' if info['pct'] > 40 else ('HIGH' if info['pct'] > 15 else 'MEDIUM')
+        
+        root_cause = f"AI too strict on {param} (incorrect markdown vs verifier)"
+        fix = fixes.get(param, f"Align {param} threshold with human verifier judgment standards.")
+        
         deltas.append({'param': param, **info, 'severity': severity, 'rootCause': root_cause, 'fix': fix})
     return deltas
 
 def compare_prompt_with_data(current_prompt, deltas):
     """Check which deltas are already addressed in the current prompt."""
-    prompt_lower = current_prompt.lower()
+    prompt_lower = (current_prompt or '').lower()
     covered, gaps = [], []
     for d in deltas:
         keywords = d['param'].lower().split()
@@ -161,56 +198,50 @@ def compare_prompt_with_data(current_prompt, deltas):
     return {'covered': covered, 'gaps': gaps, 'coverage_pct': round(len(covered) / max(len(deltas), 1) * 100, 1)}
 
 def call_vertex_api(prompt_text, model=DEFAULT_MODEL):
-    """Call internal company Vertex AI API and robustly extract text."""
+    """Call internal company Vertex AI API."""
     payload = {'prompt': prompt_text, 'model': model}
     resp = requests.post(VERTEX_GENERATE_URL, json=payload, timeout=55)
     resp.raise_for_status()
     data = resp.json()
-    # Try every known field shape the internal API might return
     text = (
-        data.get('text') or
-        data.get('response') or
-        data.get('content') or
-        data.get('generated_text') or
-        data.get('result') or
-        data.get('output') or
+        data.get('text') or data.get('response') or data.get('content') or
+        data.get('generated_text') or data.get('result') or data.get('output') or
         (data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text')) or
         (data.get('candidates', [{}])[0].get('output')) or
         (data.get('candidates', [{}])[0].get('text'))
     )
-    if isinstance(text, dict):
-        text = json.dumps(text)
+    if isinstance(text, dict): text = json.dumps(text)
     return text
 
 def evolve_prompt_vertex(analysis, deltas, current_prompt):
-    """Generate an optimized audit prompt via the internal Vertex AI API."""
+    """Generate an optimized audit prompt via Vertex AI."""
     s = analysis['summary']
-    meta_prompt = f"""You are an expert prompt engineer specializing in compliance audit automation for ICICI Bank Debit Card upgrade calls.
+    process = s['process']
+    
+    meta_prompt = f"""You are an expert prompt engineer specializing in compliance audit automation for Pragyaa.AI.
+PROCESS TYPE: {process}
 
 ANALYSIS SUMMARY:
 - Total audits analyzed: {s['total_cases']}
 - AI Approval Rate: {s['ai_approval_rate']}%
-- Human Verifier Approval Rate: {s['verifier_approval_rate']}%
+- Verifier Approval Rate: {s['verifier_approval_rate']}%
 - Agreement Rate: {s['agreement_rate']}%
 - False Rework Cases (AI too strict): {s['false_rework_count']}
 
-TOP DISCREPANCY CAUSES:
-{chr(10).join(f"- [{d['severity']}] {d['param']}: {d['pct']}% failure rate | Root Cause: {d['rootCause']} | Fix: {d['fix']}" for d in deltas)}
+TOP VARIANCE FINDINGS (AI vs Verifier):
+{chr(10).join(f"- [{d['severity']}] {d['param']}: {d['pct']}% failure | Root Cause: {d['rootCause']} | FIX: {d['fix']}" for d in deltas)}
 
-CONSENT PATTERNS: {json.dumps(analysis['false_rework']['patterns']['consent'], ensure_ascii=False)}
-CHARGES PATTERNS: {json.dumps(analysis['false_rework']['patterns']['charges'], ensure_ascii=False)}
+CURRENT PROMPT:
+{current_prompt[:1500] if current_prompt else "(none provided)"}
 
-CURRENT PROMPT (to be improved):
-{current_prompt[:2000] if current_prompt else "(none provided)"}
+TASK: Generate an improved audit prompt for {process} that:
+1. Implements the FIXES listed above to align with human verifier judgment.
+2. Corrects 'Accurate Disposition' logic for edge cases (Rejected, Busy, Callback, Pin code, etc.).
+3. Adopts a more lenient/intent-based evaluation for Greeting and Tone.
+4. Correctly handles 'NA' scenarios for Closing Summary (e.g., customer disconnects).
+5. Ensures all critical compliance pillars are maintained while reducing false rework.
 
-TASK: Generate an optimized, production-ready compliance audit prompt that:
-1. Implements 3-Tier Hindi consent validation (Tier1: explicit "haan", Tier2: contextual after full pitch, Tier3: refusal only)
-2. Uses content-based charges evaluation (pass if ₹699+GST stated correctly regardless of pace)
-3. Uses fuzzy card variant matching for "Coral card", "Updated Coral", "Coral Visa"
-4. Only fails Pitch Pace if customer explicitly asks for clarification
-5. Aligns ALL thresholds with human verifier standards from the data above
-
-Output ONLY the final audit prompt text. No explanations, no preamble."""
+Output ONLY the final optimized audit prompt. No preamble, no explanations."""
 
     return call_vertex_api(meta_prompt)
 
@@ -219,7 +250,7 @@ Output ONLY the final audit prompt text. No explanations, no preamble."""
 @app.route('/api/health', methods=['GET'])
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok', 'version': '1.0.9-routing-fix'})
+    return jsonify({'status': 'ok', 'version': '1.1.0', 'engine': 'Vertex AI'})
 
 @app.route('/api/analyze', methods=['POST'])
 @app.route('/analyze', methods=['POST'])
@@ -236,11 +267,13 @@ def analyze():
         # Decode and parse Excel
         file_bytes = base64.b64decode(file_content_b64)
         df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=0)
+        
+        process_name = detect_process(df)
         df, ai_col, ver_col = preprocess_df(df)
 
         # Full analysis
-        analysis = analyze_root_causes(df, ai_col, ver_col)
-        deltas = generate_prompt_deltas(analysis)
+        analysis = analyze_root_causes(df, ai_col, ver_col, process_name)
+        deltas = generate_prompt_deltas(analysis, process_name)
         coverage = compare_prompt_with_data(current_prompt, deltas)
 
         # Prompt evolution
@@ -249,26 +282,17 @@ def analyze():
 
         if generate_prompt_flag:
             try:
-                vertex_status = 'Calling Internal API...'
                 optimized_prompt = evolve_prompt_vertex(analysis, deltas, current_prompt)
-                vertex_status = 'Success' if optimized_prompt else 'Empty response from API'
+                vertex_status = 'Success' if optimized_prompt else 'Empty response from AI'
             except Exception as ai_err:
-                vertex_status = f'API Error: {str(ai_err)}'
+                vertex_status = f'AI Error: {str(ai_err)}'
 
-        # Shape response for frontend camelCase expectations
+        # Shape response for frontend
         formatted_analysis = {
-            'summary': {
-                'total': analysis['summary']['total_cases'],
-                'agreementRate': analysis['summary']['agreement_rate'],
-                'aiApprovalRate': analysis['summary']['ai_approval_rate'],
-                'verApprovalRate': analysis['summary']['verifier_approval_rate'],
-                'falseReworkCount': analysis['summary']['false_rework_count'],
-                'falseApproveCount': analysis['summary']['false_approve_count'],
-                'gap': analysis['summary']['gap']
-            },
+            'summary': analysis['summary'],
             'paramFailures': analysis['false_rework']['param_failures'],
-            'consentPatterns': analysis['false_rework']['patterns']['consent'],
-            'chargesPatterns': analysis['false_rework']['patterns']['charges'],
+            'consentPatterns': {}, # Reserved for future expansion
+            'chargesPatterns': {},
             'faReasons': analysis['false_approve']['reasons']
         }
 
@@ -282,6 +306,8 @@ def analyze():
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/vertex', methods=['POST'])
@@ -296,7 +322,5 @@ def vertex_proxy():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Vercel calls this module and expects the `app` object directly.
-# The if-block below is only for local development.
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
