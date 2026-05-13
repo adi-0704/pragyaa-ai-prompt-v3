@@ -3,7 +3,7 @@ Pragyaa.AI — Serverless Backend v1.1.0 (Multi-Process Support)
 Supports Amazon(NCA), Insta(NCA), and CC/DC Upgrade processes.
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 import os
 import json
@@ -11,7 +11,17 @@ import io
 import base64
 import requests
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../')
+
+# ─── Static Files ─────────────────────────────────────────────────────────────
+@app.route('/')
+def index():
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/<path:path>')
+def static_proxy(path):
+    return send_from_directory(app.static_folder, path)
+
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 @app.after_request
